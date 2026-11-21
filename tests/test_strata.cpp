@@ -7,6 +7,15 @@
 #include "ui/mainwindow.h"
 #include "ui/projectsearch.h"
 #include <QFile>
+#include <QClipboard>
+#include <QFileDialog>
+#include <QLabel>
+#include <QPushButton>
+#include <QStatusBar>
+#include <QTextBlock>
+#include <QTextLayout>
+#include <QToolButton>
+#include <cmath>
 #include <QJsonArray>
 #include <QLineEdit>
 #include <QMessageBox>
@@ -23,6 +32,7 @@ class StrataTests : public QObject {
     QTemporaryDir testPaths;
   private slots:
     void initTestCase() {
+        QCoreApplication::setAttribute(Qt::AA_DontUseNativeDialogs);
         QStandardPaths::setTestModeEnabled(true);
 #ifdef Q_OS_UNIX
         QStandardPaths::setTestModeEnabled(false);
@@ -350,6 +360,237 @@ class StrataTests : public QObject {
         QVERIFY(Persistence::write(path, {{"text", "last recoverable snapshot"}}));
         QVERIFY(!Persistence::write(path, {{"text", QString(65 * 1024 * 1024, QLatin1Char('x'))}}));
         QCOMPARE(Persistence::read(path)["text"].toString(), QString("last recoverable snapshot"));
+    }
+    void syntaxContrast() {
+        auto luminance = [](QColor color) {
+            auto linear = [](double value) {
+                return value <= 0.04045 ? value / 12.92 : std::pow((value + 0.055) / 1.055, 2.4);
+            };
+            return 0.2126 * linear(color.redF()) + 0.7152 * linear(color.greenF()) +
+                   0.0722 * linear(color.blueF());
+        };
+        for (bool light : {false, true}) {
+            for (auto language : {QString("Markdown"), QString("C++")}) {
+                QTextDocument doc;
+                Highlighter syntax(&doc, language);
+                doc.setPlainText(language == "Markdown"
+                                     ? "# Heading\n`code` **bold** [link](path)"
+                                     : "const auto text = \"string\"; int n = 42; // comment");
+                syntax.setLightTheme(light);
+                syntax.rehighlight();
+                int checked = 0;
+                for (auto block = doc.begin(); block.isValid(); block = block.next()) {
+                    for (const auto &range : block.layout()->formats()) {
+                        double foreground = luminance(range.format.foreground().color());
+                        for (auto background : {QColor(light ? "#FFFFFF" : "#141B25"),
+                                                QColor(light ? "#E8EEF5" : "#202B39")}) {
+                            double base = luminance(background);
+                            double contrast = (qMax(foreground, base) + 0.05) /
+                                              (qMin(foreground, base) + 0.05);
+                            QVERIFY2(contrast >= 4.5,
+                                     qPrintable(range.format.foreground().color().name() +
+                                                " contrast " + QString::number(contrast)));
+                        }
+                        ++checked;
+                    }
+                }
+                QVERIFY(checked >= 4);
+            }
+        }
+    }
+    void liveThemeChange() {
+        QSettings settings("StrataEditor", "StrataEditor");
+        settings.setValue("light", false);
+        MainWindow window(false);
+        auto editor = window.current()->code;
+        editor->setPlainText("const int count = 42;");
+        auto syntax = editor->document()->findChild<Highlighter *>();
+        QVERIFY(syntax);
+        syntax->setLanguage("C++");
+        auto dark = editor->document()->firstBlock().layout()->formats().first().format.foreground();
+        window.findChild<QAction *>("theme")->trigger();
+        auto light = editor->document()->firstBlock().layout()->formats().first().format.foreground();
+        QVERIFY(dark != light);
+        QCOMPARE(editor->extraSelections().first().format.background().color(),
+                 editor->palette().color(QPalette::AlternateBase));
+        window.findChild<QAction *>("theme")->trigger();
+        QCOMPARE(editor->document()->firstBlock().layout()->formats().first().format.foreground(), dark);
+        window.current()->model->text()->setModified(false);
+    }
+    void markdownViewModes() {
+        Document doc(Document::Mode::Markdown);
+        const QString source = "# Heading\n\nA paragraph with **bold** and `code`.\n";
+        doc.text()->setPlainText(source);
+        auto undoSteps = doc.text()->availableUndoSteps();
+        DocumentView view(&doc);
+        view.resize(900, 600);
+        view.show();
+        QVERIFY(view.preview->isReadOnly());
+        QCOMPARE(view.preview->document()->documentMargin(), 24.0);
+        QCOMPARE(view.preview->document()->firstBlock().blockFormat().lineHeight(), 150.0);
+        view.findChild<QToolButton *>("sourceView")->click();
+        QCOMPARE(view.markdownView(), DocumentView::MarkdownView::Source);
+        QVERIFY(view.preview->isHidden() || view.preview->parentWidget()->isHidden());
+        QVERIFY(!view.code->isHidden());
+        view.findChild<QToolButton *>("previewView")->click();
+        QCoreApplication::processEvents();
+        QVERIFY(view.preview->width() >= qMin(view.width() - 64, view.preview->maximumWidth()) - 32);
+        QVERIFY(view.code->isHidden());
+        QVERIFY(view.preview->isVisible());
+        QCOMPARE(view.markdownView(), DocumentView::MarkdownView::Preview);
+        DocumentView restored(&doc);
+        restored.restoreViewState(view.viewState());
+        QCOMPARE(restored.markdownView(), DocumentView::MarkdownView::Preview);
+        restored.restoreViewState({{"preview", false}});
+        QCOMPARE(restored.markdownView(), DocumentView::MarkdownView::Source);
+        restored.restoreViewState({{"markdownView", 999}});
+        QCOMPARE(restored.markdownView(), DocumentView::MarkdownView::Split);
+        view.split(Qt::Horizontal);
+        QCOMPARE(view.markdownView(), DocumentView::MarkdownView::Split);
+        auto editors = view.findChildren<CodeEditor *>();
+        QCOMPARE(editors.size(), 2);
+        view.setMarkdownView(DocumentView::MarkdownView::Preview);
+        for (auto editor : editors)
+            QVERIFY(editor->isHidden());
+        QTextCursor cursor(doc.text());
+        cursor.setPosition(3);
+        view.setCursor(cursor);
+        QCOMPARE(view.markdownView(), DocumentView::MarkdownView::Split);
+        QCOMPARE(doc.sourceText(), source);
+        QCOMPARE(doc.text()->availableUndoSteps(), undoSteps);
+        QCOMPARE(view.preview->toPlainText().contains("Heading"), true);
+    }
+    void findFromPreview() {
+        MainWindow window(false);
+        auto view = window.newDocument(Document::Mode::Markdown);
+        view->code->setPlainText("# needle");
+        view->setMarkdownView(DocumentView::MarkdownView::Preview);
+        window.findChild<QAction *>("find")->trigger();
+        window.findChild<QLineEdit *>("findText")->setText("needle");
+        window.findNext();
+        QCOMPARE(view->markdownView(), DocumentView::MarkdownView::Split);
+        QCOMPARE(view->cursor().selectedText(), QString("needle"));
+        window.show();
+        view->setMarkdownView(DocumentView::MarkdownView::Preview);
+        window.findChild<QAction *>("find")->trigger();
+        auto find = window.findChild<QLineEdit *>("findText");
+        find->setFocus();
+        QTRY_VERIFY(find->hasFocus());
+        QTest::keyClick(find, Qt::Key_Escape);
+        QVERIFY(window.findChild<QWidget *>("findBar")->isHidden());
+        QTRY_VERIFY(view->preview->hasFocus());
+        window.findChild<QAction *>("selectAll")->trigger();
+        window.findChild<QAction *>("copy")->trigger();
+        QCOMPARE(QApplication::clipboard()->text(), QString("needle"));
+        QCOMPARE(view->markdownView(), DocumentView::MarkdownView::Preview);
+        QTest::qWait(250);
+        QVERIFY(view->preview->textCursor().hasSelection());
+        window.findChild<QAction *>("duplicate")->trigger();
+        QCOMPARE(view->markdownView(), DocumentView::MarkdownView::Split);
+        QCOMPARE(view->model->sourceText(), QString("# needle\n# needle"));
+        view->model->text()->setModified(false);
+    }
+    void progressiveFindAndStatus() {
+        MainWindow window(false);
+        window.resize(640, 420);
+        window.show();
+        auto field = window.findChild<QLineEdit *>("findText");
+        auto replaceRow = window.findChild<QWidget *>("replaceRow");
+        window.findChild<QAction *>("find")->trigger();
+        QVERIFY(field->isVisible());
+        QVERIFY(replaceRow->isHidden());
+        window.findChild<QAction *>("replace")->trigger();
+        QVERIFY(replaceRow->isVisible());
+        QCoreApplication::processEvents();
+        QCOMPARE(window.width(), 640);
+        for (auto button : replaceRow->findChildren<QPushButton *>()) {
+            QVERIFY(button->isVisible());
+            QVERIFY(window.rect().contains(button->mapTo(&window, button->rect().bottomRight())));
+        }
+        field->setFocus();
+        QTest::keyClick(field, Qt::Key_Escape);
+        QVERIFY(window.findChild<QWidget *>("findBar")->isHidden());
+        QTRY_VERIFY(window.current()->code->hasFocus());
+        window.statusBar()->showMessage("Important message");
+        window.current()->code->setPlainText("move the cursor");
+        auto cursor = window.current()->cursor();
+        cursor.setPosition(4);
+        window.current()->setCursor(cursor);
+        QCOMPARE(window.statusBar()->currentMessage(), QString("Important message"));
+        QCOMPARE(window.findChild<QLabel *>("cursorStatus")->text(), QString("Ln 1, Col 5"));
+        window.current()->model->text()->setModified(false);
+        window.findChild<QAction *>("close")->trigger();
+        QVERIFY(window.findChild<QLabel *>("cursorStatus")->text().isEmpty());
+        QVERIFY(window.findChild<QLabel *>("documentStatus")->text().isEmpty());
+    }
+    void persistentExternalWarning() {
+        QTemporaryDir dir;
+        auto path = dir.filePath("conflict.txt");
+        auto write = [&](const QByteArray &text) {
+            QFile file(path);
+            QVERIFY(file.open(QIODevice::WriteOnly));
+            QCOMPARE(file.write(text), text.size());
+        };
+        write("original");
+        MainWindow window(false);
+        window.show();
+        window.openFile(path);
+        QTRY_COMPARE(window.current()->model->path(), QFileInfo(path).canonicalFilePath());
+        auto view = window.current();
+        view->code->setPlainText("my edits");
+        view->model->text()->setModified(true);
+        write("external");
+        QTRY_VERIFY(view->externallyChanged());
+        auto cursor = view->cursor();
+        cursor.setPosition(2);
+        view->setCursor(cursor);
+        QVERIFY(view->externallyChanged());
+        auto other = window.newDocument();
+        auto tabs = window.findChild<QTabWidget *>("documentTabs");
+        tabs->setCurrentWidget(view);
+        QVERIFY(view->findChild<QWidget *>("externalWarning")->isVisible());
+        QVERIFY(tabs->tabToolTip(tabs->currentIndex()).contains("Changed on disk"));
+        QTimer::singleShot(0, [] {
+            for (auto widget : QApplication::topLevelWidgets())
+                if (auto box = qobject_cast<QMessageBox *>(widget))
+                    box->done(QMessageBox::Cancel);
+        });
+        view->findChild<QPushButton *>("reloadExternal")->click();
+        QVERIFY(view->externallyChanged());
+        QCOMPARE(view->model->sourceText(), QString("my edits"));
+        QTimer::singleShot(0, [] {
+            for (auto widget : QApplication::topLevelWidgets())
+                if (auto dialog = qobject_cast<QFileDialog *>(widget))
+                    dialog->reject();
+        });
+        view->findChild<QPushButton *>("saveExternalCopy")->click();
+        QVERIFY(view->externallyChanged());
+        QTimer::singleShot(0, [] {
+            for (auto widget : QApplication::topLevelWidgets())
+                if (auto box = qobject_cast<QMessageBox *>(widget))
+                    box->button(QMessageBox::Discard)->click();
+        });
+        view->findChild<QPushButton *>("reloadExternal")->click();
+        QVERIFY(!view->externallyChanged());
+        QCOMPARE(view->model->sourceText(), QString("external"));
+        QCOMPARE(other->model->sourceText(), QString());
+        view->code->selectAll();
+        QTest::keyClicks(view->code, "saved copy");
+        write("another external edit");
+        QTRY_VERIFY(view->externallyChanged());
+        auto copyPath = dir.filePath("copy.txt");
+        QTimer::singleShot(0, [copyPath] {
+            for (auto widget : QApplication::topLevelWidgets())
+                if (auto dialog = qobject_cast<QFileDialog *>(widget)) {
+                    dialog->selectFile(copyPath);
+                    QMetaObject::invokeMethod(dialog, "accept", Qt::DirectConnection);
+                }
+        });
+        view->findChild<QPushButton *>("saveExternalCopy")->click();
+        QVERIFY(!view->externallyChanged());
+        QCOMPARE(view->model->path(), QFileInfo(copyPath).canonicalFilePath());
+        QCOMPARE(Document::read(copyPath).text, QString("saved copy"));
+        QCOMPARE(Document::read(path).text, QString("another external edit"));
     }
     void languageDetection() {
         QCOMPARE(Highlighter::languageForPath("a.cpp"), QString("C++"));
