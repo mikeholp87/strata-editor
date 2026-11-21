@@ -17,7 +17,7 @@ cpack --config build/CPackConfig.cmake -G TGZ
 sudo apt install ./dist/strata-editor_0.1.0_amd64.deb
 ```
 
-DEB uses dpkg-shlibdeps to declare system-library requirements; the TGZ also needs system Qt and is not an AppImage. AppImage, RPM/Flatpak and signed installers are planned. Tags matching the CMake project version (for example, `v0.1.0`) build, test, install-check and publish a `.deb` plus SHA256 checksums through `.github/workflows/release.yml`. Pull requests and manual dispatches only build candidates. Release packages use Ubuntu 24.04 amd64 so their runtime dependencies match that baseline.
+DEB declares Qt runtime requirements by hand (each as `libqt6Xt64 | libqt6X`, so it installs on both Ubuntu 24.04 and Debian); the TGZ also needs system Qt and is not an AppImage. AppImage, RPM/Flatpak and signed installers are planned. Tags matching the CMake project version (for example, `v0.1.0`) build, test, install-check and publish a `.deb` plus SHA256 checksums through `.github/workflows/release.yml`. Pull requests and manual dispatches only build candidates. Release packages use Ubuntu 24.04 amd64 so their runtime dependencies match that baseline.
 
 The signed [central APT repository](https://mikeholp87.github.io/apt/) indexes the GitHub Release assets. After a release, run its `publish.yml` workflow to refresh the index; the nightly schedule is a backstop. The [README](../README.md#install-with-apt) has the installation commands.
 

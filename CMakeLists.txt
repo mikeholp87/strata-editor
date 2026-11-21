@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(StrataEditor VERSION 0.1.0 LANGUAGES CXX)
+project(StrataEditor VERSION 0.1.1 LANGUAGES CXX)
 set(STRATA_PRODUCT_NAME "Strata Editor" CACHE STRING "Application display name")
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -53,8 +53,11 @@ set(CPACK_INSTALL_DEFAULT_DIRECTORY_PERMISSIONS
  OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
 set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
 set(CPACK_DEBIAN_PACKAGE_SECTION editors)
-set(CPACK_DEBIAN_PACKAGE_DEPENDS "qt6-qpa-plugins")
+# Hand-written Depends: shlibdeps on Ubuntu 24.04 names the *t64 Qt packages, which
+# Debian does not have. Accept either spelling so one .deb installs on both.
+set(CPACK_DEBIAN_PACKAGE_DEPENDS
+    "libc6 (>= 2.34), libgcc-s1 (>= 3.0), libstdc++6 (>= 11), qt6-qpa-plugins, libqt6core6t64 (>= 6.4.0) | libqt6core6 (>= 6.4.0), libqt6gui6t64 (>= 6.4.0) | libqt6gui6 (>= 6.4.0), libqt6widgets6t64 (>= 6.4.0) | libqt6widgets6 (>= 6.4.0), libqt6printsupport6t64 (>= 6.1.2) | libqt6printsupport6 (>= 6.1.2)")
 set(CPACK_DEBIAN_PACKAGE_RECOMMENDS "qt6-wayland")
-set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS OFF)
 set(CPACK_GENERATOR "TGZ;DEB")
 include(CPack)

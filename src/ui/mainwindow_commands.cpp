@@ -388,7 +388,7 @@ void MainWindow::buildCommands() {
         "about", tr("About"), {},
         [this] {
             QMessageBox::about(this, STRATA_PRODUCT_NAME,
-                               tr("A native text, Markdown and visual HTML editor.\nVersion 0.1.0 • MIT\nQt "
+                               tr("A native text, Markdown and visual HTML editor.\nVersion 0.1.1 • MIT\nQt "
                                   "%1\nNo telemetry or cloud account.")
                                    .arg(qVersion()));
         },
