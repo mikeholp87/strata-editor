@@ -6,10 +6,19 @@ class CodeEditor;
 class QTextEdit;
 class QTextBrowser;
 class QSplitter;
+class QButtonGroup;
+class QTimer;
 class DocumentView : public QWidget {
     Q_OBJECT
   public:
     explicit DocumentView(Document *document, QWidget *parent = nullptr);
+    enum class MarkdownView { Source, Split, Preview };
+    MarkdownView markdownView() const {
+        return mode;
+    }
+    void setMarkdownView(MarkdownView value);
+    void setExternalChange(bool changed);
+    bool externallyChanged() const;
     Document *model;
     CodeEditor *code = nullptr;
     QTextEdit *rich = nullptr;
@@ -24,9 +33,16 @@ class DocumentView : public QWidget {
     void configure(const QFont &font, bool wrap, int tabWidth, bool spaces, bool numbers);
   signals:
     void cursorChanged();
+    void reloadRequested();
+    void saveCopyRequested();
 
   private:
     QSplitter *panes;
+    QWidget *previewPane = nullptr;
+    QWidget *externalWarning;
+    QButtonGroup *viewButtons = nullptr;
+    QTimer *previewTimer = nullptr;
+    MarkdownView mode = MarkdownView::Split;
     QPointer<CodeEditor> focusedCode;
     QPointer<QTextEdit> focusedRich;
     void updatePreview();

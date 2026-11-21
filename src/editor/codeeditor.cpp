@@ -17,6 +17,7 @@ class Gutter : public QWidget {
 };
 CodeEditor::CodeEditor(QWidget *p) : QPlainTextEdit(p), gutter(new Gutter(this)) {
     setObjectName("codeEditor");
+    setAccessibleName(tr("Source editor"));
     setFrameShape(QFrame::NoFrame);
     setLineWrapMode(NoWrap);
     connect(this, &QPlainTextEdit::blockCountChanged, this, [this] { refreshOptions(); });
@@ -40,7 +41,7 @@ void CodeEditor::refreshOptions() {
     setTabStopDistance(fontMetrics().horizontalAdvance(QLatin1Char(' ')) * tabWidth);
     gutter->setVisible(numbers);
     gutter->setGeometry(0, 0, gutterWidth(), height());
-    gutter->update();
+    highlightLine();
 }
 void CodeEditor::resizeEvent(QResizeEvent *e) {
     QPlainTextEdit::resizeEvent(e);
@@ -55,7 +56,7 @@ void CodeEditor::paintGutter(QPaintEvent *e) {
         int h = qRound(blockBoundingRect(b).height());
         if (b.isVisible() && top + h >= e->rect().top()) {
             p.setPen(b.blockNumber() == textCursor().blockNumber()
-                         ? QColor("#4DA8FF")
+                         ? palette().color(QPalette::Link)
                          : palette().color(QPalette::PlaceholderText));
             p.drawText(0, top, gutter->width() - 8, fontMetrics().height(), Qt::AlignRight,
                        QString::number(b.blockNumber() + 1));

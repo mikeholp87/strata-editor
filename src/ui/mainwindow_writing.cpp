@@ -182,6 +182,8 @@ void MainWindow::replace(bool all) {
     auto v = current();
     if (!v || findText->text().isEmpty())
         return;
+    if (v->preview && v->markdownView() == DocumentView::MarkdownView::Preview)
+        v->setMarkdownView(DocumentView::MarkdownView::Split);
     if (!all) {
         auto c = v->cursor();
         bool matches =
