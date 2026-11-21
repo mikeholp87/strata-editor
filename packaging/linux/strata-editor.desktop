@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Strata Editor
+Comment=Edit text, code, Markdown and formatted HTML
+Exec=strata-editor %F
+Icon=strata-editor
+Terminal=false
+Categories=Utility;TextEditor;Development;
+MimeType=text/plain;text/markdown;text/html;text/x-c++src;application/json;
+StartupNotify=true

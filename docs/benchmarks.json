@@ -1,0 +1,24 @@
+{
+    "Qt": "6.11.2",
+    "measurements": [
+        {
+            "MiB": 1,
+            "accepted": true,
+            "one_insert_and_events_ms": 1.113134,
+            "populate_and_first_layout_ms": 31.391454,
+            "read_or_refusal_ms": 8.450705
+        },
+        {
+            "MiB": 10,
+            "accepted": false,
+            "read_or_refusal_ms": 0.021305,
+            "reason": "Files above 8 MiB need the planned large-file viewer. This file has not been opened."
+        },
+        {
+            "MiB": 100,
+            "accepted": false,
+            "read_or_refusal_ms": 0.020903,
+            "reason": "Files above 8 MiB need the planned large-file viewer. This file has not been opened."
+        }
+    ]
+}

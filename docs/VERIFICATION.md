@@ -1,0 +1,24 @@
+# Local verification — 2026-11-21
+
+Environment: Debian forky/sid x86_64; GCC 16.2.0, CMake 4.3.4, Ninja 1.13.2, Qt 6.11.2. No development Qt packages needed installation. clang-format 23.1.5 was installed under /tmp for formatting only.
+
+## Results
+
+- Debug and Release CMake/Ninja builds succeeded. Final compilation with -Wall -Wextra -Wpedantic had no source warnings.
+- CTest: 1 executable, 29 Qt Test cases including data rows and lifecycle cases; 29 passed, 0 failed, 0 skipped.
+- Tests cover exact byte round trips (UTF-8/BOM, both UTF-16 BOM endiannesses, emoji/RTL, NBSP/U+2028, empty file), truncated/binary refusal, external-save conflicts, read-only save refusal, shared split undo, line commands, rich-text save/reopen, Markdown source/resource safety, persistence corruption and schema handling, literal project search/cancel, unsaved-close cancellation, settings reload, split state, actual workspace restoration, asynchronous open/edit/save, GUI find/replace/undo, optional Git operations in a temporary repository, PDF output, source-safe exports and oversized snapshot retention.
+- Xvfb launch and screenshot succeeded; docs/screenshot.png was inspected. Markdown scroll reset was corrected after inspecting the first capture. Screenshot shows the real app, not a mockup.
+- CMake staged installation to /tmp/strata-install succeeded; installed executable reported 0.1.0.
+- CPack generated dist/strata-editor-0.1.0-Linux.deb and .tar.gz. dpkg-deb metadata and archive contents were inspected. The local DEB requires this system’s Qt >=6.11.2; rebuild on the intended distribution for its own compatible dependency set. No system-wide install was performed.
+- clang-format dry-run passed on source, tests and benchmark code.
+- Measurements are recorded in benchmarks/README.md, docs/benchmarks.json and docs/startup-lifecycle.json. Lifecycle includes an intentional timer; no pure startup, idle CPU or real scrolling-latency claim is made.
+
+## Review and fixes
+
+A combined code-quality/reuse/efficiency/test/comment review found Unicode normalization through Qt toPlainText, unsafe PDF source targeting, wrong-pane commands, mismatched recovery limits and unsafe declined-backup replacement. These were fixed and protected with behavioral regressions. The reviewer rechecked the fixes, reran CTest and found no new material issue within that scope. Fixed regexes are cached and redundant language rehighlighting is avoided. No proof tests were removed or weakened.
+
+Jev Review was attempted but returned `JEV_API_KEY is not set`; no scalar scores were available. Code review: skipped (ce-code-review unavailable) — its required Git base cannot be resolved in the protected empty .git workspace. The file-set review above and manual code scan provided local fallback coverage, not a completed CE review receipt. No commit, push or release publication was attempted during the build milestone. Git was subsequently initialized and the existing GitHub history fetched at the user’s explicit request.
+
+## Coverage limits
+
+Windows CI is authored but unexecuted here. Neither Wayland nor physical printing, accessibility technology, installed-system package lifecycle, AppImage/installer delivery, or a CommonMark conformance corpus was verified. CMake reports missing CUPS development libraries; PDF generation passes, but physical printing needs platform validation. LSP/Tree-sitter/embedded terminal/multicursor/folding/spellcheck and streaming large files are not implemented. Recovery over 64 MiB total fails visibly and retains the previous snapshot. U+2029 source files are refused rather than silently normalized. Large synchronous layout/save/serialization and regex operations remain bounded by the document cap, but need further responsiveness work before production release.
