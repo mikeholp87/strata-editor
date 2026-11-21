@@ -462,18 +462,23 @@ class StrataTests : public QObject {
     }
     void findFromPreview() {
         MainWindow window(false);
+        window.show();
         auto view = window.newDocument(Document::Mode::Markdown);
         view->code->setPlainText("# needle");
         view->setMarkdownView(DocumentView::MarkdownView::Preview);
         window.findChild<QAction *>("find")->trigger();
-        window.findChild<QLineEdit *>("findText")->setText("needle");
-        window.findNext();
+        auto find = window.findChild<QLineEdit *>("findText");
+        find->setText("needle");
+        QTRY_VERIFY(find->hasFocus());
+        QTest::keyClick(find, Qt::Key_Return);
         QCOMPARE(view->markdownView(), DocumentView::MarkdownView::Split);
         QCOMPARE(view->cursor().selectedText(), QString("needle"));
-        window.show();
+        QVERIFY(find->hasFocus());
+        QTest::keyClick(find, Qt::Key_Return);
+        QTest::keyClicks(find, " revised query");
+        QCOMPARE(view->model->sourceText(), QString("# needle"));
         view->setMarkdownView(DocumentView::MarkdownView::Preview);
         window.findChild<QAction *>("find")->trigger();
-        auto find = window.findChild<QLineEdit *>("findText");
         find->setFocus();
         QTRY_VERIFY(find->hasFocus());
         QTest::keyClick(find, Qt::Key_Escape);
@@ -488,6 +493,13 @@ class StrataTests : public QObject {
         window.findChild<QAction *>("duplicate")->trigger();
         QCOMPARE(view->markdownView(), DocumentView::MarkdownView::Split);
         QCOMPARE(view->model->sourceText(), QString("# needle\n# needle"));
+        view->setMarkdownView(DocumentView::MarkdownView::Preview);
+        window.findChild<QAction *>("replace")->trigger();
+        find->setText("needle");
+        window.findChild<QLineEdit *>("replaceText")->setText("match");
+        window.replace(true);
+        QVERIFY(find->hasFocus());
+        QCOMPARE(view->model->sourceText(), QString("# match\n# match"));
         view->model->text()->setModified(false);
     }
     void progressiveFindAndStatus() {

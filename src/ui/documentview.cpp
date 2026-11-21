@@ -161,6 +161,7 @@ bool DocumentView::externallyChanged() const {
 void DocumentView::setMarkdownView(MarkdownView value) {
     if (!preview)
         return;
+    bool focusInDocument = isAncestorOf(QApplication::focusWidget());
     mode = value;
     for (int i = 0; i < panes->count(); ++i) {
         auto pane = panes->widget(i);
@@ -170,8 +171,9 @@ void DocumentView::setMarkdownView(MarkdownView value) {
     viewButtons->button(int(mode))->setChecked(true);
     if (mode == MarkdownView::Preview) {
         updatePreview();
-        preview->setFocus();
-    } else
+        if (focusInDocument)
+            preview->setFocus();
+    } else if (focusInDocument)
         activeCode()->setFocus();
 }
 void DocumentView::togglePreview() {
