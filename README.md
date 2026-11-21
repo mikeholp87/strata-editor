@@ -5,7 +5,7 @@
 
 A native **C++20 / Qt 6** desktop editor for plain text, source code, Markdown and formatted HTML. Keep code and writing in one workspace, with shared-document splits, a live Markdown preview and local recovery.
 
-**0.1.0 preview:** the editing baseline is implemented, including configurable keyboard shortcuts and Source / Split / Preview modes. Advanced IDE features and large-file support remain on the [roadmap](docs/ROADMAP.md).
+**0.1.1 preview:** the editing baseline is implemented, including configurable keyboard shortcuts and Source / Split / Preview modes. Advanced IDE features and large-file support remain on the [roadmap](docs/ROADMAP.md).
 
 [Project website](https://mikeholp87.github.io/strata-editor/) · [User guide](docs/USER_GUIDE.md) · [Build instructions](docs/BUILDING.md) · [Exact feature boundaries](docs/FEATURES.md)
 
@@ -35,22 +35,46 @@ Language detection and **lexical** syntax highlighting cover C/C++, Rust, Python
 
 ## Get started
 
-Install the Linux preview through the signed [APT repository](https://mikeholp87.github.io/apt/) or download a `.deb` from [GitHub Releases](https://github.com/mikeholp87/strata-editor/releases). Packages are built on Ubuntu 24.04 for **amd64** and require compatible system libraries. Windows ZIPs remain available from successful [Build and test runs](https://github.com/mikeholp87/strata-editor/actions/workflows/build.yml).
+Install the Linux preview through the signed [APT repository](https://mikeholp87.github.io/apt/) or download a `.deb` from [GitHub Releases](https://github.com/mikeholp87/strata-editor/releases). Packages are built on Ubuntu 24.04 for **amd64** and install on Debian-based systems that provide Qt 6.4 or newer (see [Install with APT](#install-with-apt)). Windows ZIPs remain available from successful [Build and test runs](https://github.com/mikeholp87/strata-editor/actions/workflows/build.yml).
 
 Requirements: a C++20 compiler, **CMake 3.22+**, and **Qt 6.4+** development packages with Widgets, Concurrent, PrintSupport and Test. Ninja is optional; omit `-G Ninja` if using another generator.
 
 ### Install with APT
 
-On Ubuntu 24.04 or a compatible Debian-based system:
+The signed APT repository is the recommended way to install Strata Editor on Linux. It installs the Qt libraries for you and delivers updates through `apt upgrade`.
+
+**Supported systems:** Debian-based Linux on **amd64** with Qt 6.4 or newer available from your distribution. Tested on Ubuntu 24.04 (the release CI installs and smoke-tests every package there) and Debian forky/sid (Qt 6.11). Other Debian and Ubuntu releases work when they provide the required `libqt6*` packages. Version 0.1.0 had Qt dependency names that Debian cannot satisfy; use **0.1.1 or newer**.
+
+1. Add the repository key and source:
+
+   ```sh
+   sudo install -d -m 0755 /etc/apt/keyrings
+   curl -fsSL https://mikeholp87.github.io/apt/apt.asc | sudo tee /etc/apt/keyrings/mikeholp87-apt.asc >/dev/null
+   echo "deb [signed-by=/etc/apt/keyrings/mikeholp87-apt.asc] https://mikeholp87.github.io/apt/ ./" | sudo tee /etc/apt/sources.list.d/mikeholp87-apt.list
+   ```
+
+2. Install:
+
+   ```sh
+   sudo apt update && sudo apt install strata-editor
+   ```
+
+3. Launch `strata-editor` from a terminal or the application menu. `strata-editor --version` prints the installed version.
+
+Optional: confirm the key fingerprint before trusting the repository.
 
 ```sh
-sudo install -d -m 0755 /etc/apt/keyrings
-curl -fsSL https://mikeholp87.github.io/apt/apt.asc | sudo tee /etc/apt/keyrings/mikeholp87-apt.asc >/dev/null
-echo "deb [signed-by=/etc/apt/keyrings/mikeholp87-apt.asc] https://mikeholp87.github.io/apt/ ./" | sudo tee /etc/apt/sources.list.d/mikeholp87-apt.list
-sudo apt update && sudo apt install strata-editor
+gpg --show-keys --with-fingerprint /etc/apt/keyrings/mikeholp87-apt.asc
+# E4C2 92E5 08CB 8700 6F7C  904E 7F08 D91D 3A1D 8F76
 ```
 
-Launch `strata-editor` or use the application menu. Future releases arrive through `sudo apt upgrade`.
+**Update:** `sudo apt update && sudo apt upgrade` (or `sudo apt install --only-upgrade strata-editor`).
+
+**Remove:** `sudo apt remove strata-editor`. To also remove the repository, delete `/etc/apt/sources.list.d/mikeholp87-apt.list` and `/etc/apt/keyrings/mikeholp87-apt.asc`. Settings, sessions and recovery files stay in `~/.local/share/StrataEditor/` until you delete them.
+
+**Without the repository:** download the `.deb` and `SHA256SUMS` from [GitHub Releases](https://github.com/mikeholp87/strata-editor/releases), run `sha256sum -c SHA256SUMS --ignore-missing`, then `sudo apt install ./strata-editor_<version>_amd64.deb`. A manually installed `.deb` does not update itself.
+
+**Troubleshooting:** if apt reports `libqt6gui6t64 ... is not installable`, you are installing 0.1.0. Run `sudo apt update` and install again to get 0.1.1 or newer. If `strata-editor --version` shows an older version after upgrading, an earlier manual copy such as `~/.local/bin/strata-editor` is first in your `PATH`; check with `type -a strata-editor`.
 
 ### Build on Linux
 

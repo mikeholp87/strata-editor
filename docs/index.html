@@ -31,7 +31,7 @@
     "description": "A native desktop editor for text, source code, Markdown and formatted HTML, with split views, live preview, configurable shortcuts and local recovery.",
     "applicationCategory": "DeveloperApplication",
     "operatingSystem": "Linux, Windows",
-    "softwareVersion": "0.1.0 preview",
+    "softwareVersion": "0.1.1 preview",
     "url": "https://mikeholp87.github.io/strata-editor/",
     "sameAs": "https://github.com/mikeholp87/strata-editor",
     "license": "https://github.com/mikeholp87/strata-editor/blob/main/LICENSE",
@@ -54,7 +54,7 @@
     </header>
     <main id="content">
       <section class="hero" aria-labelledby="hero-title">
-        <p class="status">Free and open source. Version 0.1.0 preview.</p>
+        <p class="status">Free and open source. Version 0.1.1 preview.</p>
         <h1 id="hero-title">One workspace for code and words.</h1>
         <p class="lead">Edit text, source code, Markdown and formatted HTML in a native desktop app. Keep two views of a document open, see your Markdown as you write, and work without an account or cloud service.</p>
         <div class="actions">
@@ -103,7 +103,7 @@
           <table aria-labelledby="platforms-title">
             <thead><tr><th scope="col">Platform</th><th scope="col">Validation and delivery</th></tr></thead>
             <tbody>
-              <tr><th scope="row">Linux</th><td>Local Debian x86_64 builds with Qt 6.11.2; X11/Xvfb screenshots and behavioral tests. Ubuntu 24.04 CI builds, tests and packages DEB/TGZ artifacts. Packages need compatible system Qt libraries.</td></tr>
+              <tr><th scope="row">Linux</th><td>Local Debian x86_64 builds with Qt 6.11.2; X11/Xvfb screenshots and behavioral tests. Ubuntu 24.04 CI builds, tests, installs and packages the DEB. The APT package installs on both Ubuntu 24.04 and Debian forky/sid.</td></tr>
               <tr><th scope="row">Windows x64</th><td>MSVC 2022 and Qt 6.8.3 build/test CI, with a ZIP prepared by windeployqt. Manual desktop, printing and signed-installer validation remain pending.</td></tr>
               <tr><th scope="row">macOS / Wayland</th><td>Not validated. Screen-reader and physical-printing checks also remain release work.</td></tr>
             </tbody>
@@ -113,12 +113,32 @@
 
       <section class="section" id="install" aria-labelledby="install-title">
         <div class="build-panel">
-          <div class="section-head"><h2 id="install-title">Install on Linux</h2><p>The signed APT repository provides amd64 packages built on Ubuntu 24.04. Compatible Debian-based systems need the declared system Qt libraries.</p></div>
-          <pre tabindex="0" role="region" aria-label="APT installation commands"><code>sudo install -d -m 0755 /etc/apt/keyrings
+          <div class="section-head"><h2 id="install-title">Install on Linux</h2><p>The signed APT repository provides amd64 packages and updates through <code>apt upgrade</code>. Tested on Ubuntu 24.04 and Debian forky/sid; any Debian-based release with Qt 6.4+ packages should work. Use version 0.1.1 or newer.</p></div>
+          <h3>1. Add the repository</h3>
+          <pre tabindex="0" role="region" aria-label="Add the APT repository"><code>sudo install -d -m 0755 /etc/apt/keyrings
 curl -fsSL https://mikeholp87.github.io/apt/apt.asc | sudo tee /etc/apt/keyrings/mikeholp87-apt.asc &gt;/dev/null
-echo &quot;deb [signed-by=/etc/apt/keyrings/mikeholp87-apt.asc] https://mikeholp87.github.io/apt/ ./&quot; | sudo tee /etc/apt/sources.list.d/mikeholp87-apt.list
-sudo apt update &amp;&amp; sudo apt install strata-editor</code></pre>
-          <p>Open Strata Editor from the application menu or run <code>strata-editor</code>. Future releases arrive through <code>sudo apt upgrade</code>.</p>
+echo &quot;deb [signed-by=/etc/apt/keyrings/mikeholp87-apt.asc] https://mikeholp87.github.io/apt/ ./&quot; | sudo tee /etc/apt/sources.list.d/mikeholp87-apt.list</code></pre>
+          <h3>2. Install</h3>
+          <pre tabindex="0" role="region" aria-label="Install Strata Editor"><code>sudo apt update &amp;&amp; sudo apt install strata-editor</code></pre>
+          <p>Open Strata Editor from the application menu or run <code>strata-editor</code>. <code>strata-editor --version</code> prints the installed version. Apt installs the required Qt libraries for you.</p>
+          <details><summary>Verify the repository key</summary><p>The key fingerprint should be <code>E4C2 92E5 08CB 8700 6F7C 904E 7F08 D91D 3A1D 8F76</code>.</p>
+            <pre tabindex="0" role="region" aria-label="Show the key fingerprint"><code>gpg --show-keys --with-fingerprint /etc/apt/keyrings/mikeholp87-apt.asc</code></pre>
+          </details>
+          <details><summary>Update or remove</summary><p>Updates arrive with your normal system upgrades. Settings, sessions and recovery files stay in <code>~/.local/share/StrataEditor/</code> until you delete them.</p>
+            <pre tabindex="0" role="region" aria-label="Update and remove commands"><code># update
+sudo apt update &amp;&amp; sudo apt upgrade
+
+# remove the app
+sudo apt remove strata-editor
+
+# also remove the repository
+sudo rm /etc/apt/sources.list.d/mikeholp87-apt.list /etc/apt/keyrings/mikeholp87-apt.asc</code></pre>
+          </details>
+          <details><summary>Install a .deb without the repository</summary><p>Download the .deb and <code>SHA256SUMS</code> from the release page, check the checksum, then install the file. A manually installed .deb does not update itself.</p>
+            <pre tabindex="0" role="region" aria-label="Install a downloaded deb"><code>sha256sum -c SHA256SUMS --ignore-missing
+sudo apt install ./strata-editor_&lt;version&gt;_amd64.deb</code></pre>
+          </details>
+          <details><summary>Troubleshooting</summary><p>If apt says <code>libqt6gui6t64 ... is not installable</code>, you are getting version 0.1.0, which named Qt packages that Debian does not have. Run <code>sudo apt update</code> and install again to get 0.1.1 or newer.</p><p>If <code>strata-editor --version</code> shows an older version after upgrading, an earlier manual copy such as <code>~/.local/bin/strata-editor</code> comes first in your <code>PATH</code>. Check with <code>type -a strata-editor</code>.</p></details>
           <p class="build-links"><a href="https://github.com/mikeholp87/strata-editor/releases">Release downloads and checksums</a><a href="https://mikeholp87.github.io/apt/">APT repository</a></p>
         </div>
       </section>
