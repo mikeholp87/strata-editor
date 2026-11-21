@@ -25,6 +25,11 @@ MainWindow::MainWindow(bool restore) : settings("StrataEditor", "StrataEditor") 
     tabs->setTabsClosable(true);
     tabs->setMovable(true);
     tabs->setDocumentMode(true);
+    tabs->setElideMode(Qt::ElideMiddle);
+    tabs->setUsesScrollButtons(true);
+    tabs->tabBar()->setObjectName("documentTabBar");
+    tabs->tabBar()->setDrawBase(false);
+    tabs->tabBar()->setExpanding(false);
     auto center = new QWidget;
     auto layout = new QVBoxLayout(center);
     layout->setContentsMargins(0, 0, 0, 0);
@@ -391,7 +396,18 @@ void MainWindow::configureViews() {
 void MainWindow::updateUi() {
     for (int i = 0; i < tabs->count(); ++i) {
         auto v = qobject_cast<DocumentView *>(tabs->widget(i));
-        tabs->setTabText(i, v->model->title() + (v->model->text()->isModified() ? " •" : ""));
+        auto title = v->model->title();
+        bool modified = v->model->text()->isModified();
+        tabs->setTabText(i, title + (modified ? " •" : ""));
+        tabs->tabBar()->setAccessibleTabName(
+            i, title + (modified ? tr(", unsaved changes") : QString()) +
+                   (v->externallyChanged() ? tr(", changed on disk") : QString()));
+        for (auto side : {QTabBar::LeftSide, QTabBar::RightSide}) {
+            if (auto close = tabs->tabBar()->tabButton(i, side)) {
+                close->setAccessibleName(tr("Close %1").arg(title));
+                close->setToolTip(tr("Close %1").arg(title));
+            }
+        }
         tabs->setTabToolTip(i, v->model->path() +
             (v->externallyChanged() ? tr("\nChanged on disk. Reload or save a copy.") : QString()));
     }
@@ -443,15 +459,34 @@ void MainWindow::updateTheme() {
     qApp->setStyleSheet(QString(
         "QToolBar {spacing: 2px; padding: 2px; border: none;} "
         "QToolButton, QPushButton {padding: 4px 8px;} "
-        "QTabBar::tab {padding: 7px 12px;} "
-        "QTabBar::tab:selected {border-bottom: 2px solid %1;} "
+        "QTabWidget#documentTabs::pane {border: none;} "
+        "QTabBar#documentTabBar {background: palette(window);} "
+        "QTabBar#documentTabBar::tab {background: palette(window); color: %4; "
+        "border: none; border-right: 1px solid %2; border-top: 2px solid transparent; "
+        "border-bottom: 2px solid transparent; min-width: 96px; max-width: 220px; min-height: 20px; "
+        "padding: 6px 12px; margin: 0;} "
+        "QTabBar#documentTabBar::tab:!selected:hover {background: palette(alternate-base); "
+        "color: palette(text);} "
+        "QTabBar#documentTabBar::tab:selected {background: palette(base); color: palette(text); "
+        "border-top-color: %1;} "
+        "QTabBar#documentTabBar::tab:selected:focus {border-bottom-color: %1;} "
+        "QTabBar#documentTabBar::close-button {image: url(:/strata/tab-close-%3.png); "
+        "width: 20px; height: 20px;} "
+        "QTabBar#documentTabBar::close-button:hover {image: url(:/strata/tab-close-hover.png);} "
+        "QTabBar#documentTabBar::tear {background: palette(window); border: none; width: 0;} "
+        "QTabBar#documentTabBar::scroller {width: 48px;} "
+        "QTabBar#documentTabBar QToolButton {background: palette(window); border: none; "
+        "border-left: 1px solid %2; padding: 0; width: 24px;} "
+        "QTabBar#documentTabBar QToolButton:hover {background: palette(alternate-base);} "
+        "QTabBar#documentTabBar QToolButton:focus {border: 2px solid %1;} "
         "QDockWidget::title {padding: 6px;} QLineEdit, QSpinBox, QComboBox {padding: 4px;} "
         "QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QAbstractButton:focus {border: 2px solid %1;} "
         "QTreeView {border:none;} QStatusBar {padding: 2px;} "
         "#markdownControls QToolButton:checked {background: palette(alternate-base); "
         "border-bottom: 2px solid %1;} "
         "#externalWarning {background: palette(alternate-base);}")
-        .arg(p.color(QPalette::Link).name()));
+        .arg(p.color(QPalette::Link).name(), light ? "#CBD5E1" : "#293545", light ? "light" : "dark",
+             p.color(QPalette::PlaceholderText).name()));
     configureViews();
 }
 void MainWindow::reloadCurrent() {

@@ -1,1 +1,8 @@
-<RCC><qresource prefix="/strata"><file>strata-editor.svg</file></qresource></RCC>
+<RCC>
+  <qresource prefix="/strata">
+    <file>strata-editor.svg</file>
+    <file>tab-close-dark.png</file>
+    <file>tab-close-light.png</file>
+    <file>tab-close-hover.png</file>
+  </qresource>
+</RCC>
