@@ -1,4 +1,5 @@
 #include "shortcutdialog.h"
+#include "windowstate.h"
 #include <QtWidgets>
 
 ShortcutDialog::ShortcutDialog(const QList<QAction *> &commands, QSettings &preferences, QWidget *parent)
@@ -148,6 +149,7 @@ ShortcutDialog::ShortcutDialog(const QList<QAction *> &commands, QSettings &pref
     list->setCurrentItem(list->topLevelItem(0));
     selectCommand();
     refresh();
+    WindowState::rememberDialog(*this, settings, "shortcuts");
 }
 void ShortcutDialog::selectCommand() {
     const QSignalBlocker blocker(recorder);

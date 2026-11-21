@@ -19,7 +19,7 @@ The status bar keeps cursor position, document type, encoding and line endings s
 
 ## Keyboard shortcuts
 
-Open **Tools → Keyboard shortcuts…**, or search for it in the command palette. Filter by command name, stable ID, or current shortcut; select a row and record a new key or chord. Use Ctrl, Alt, Meta, or function keys. Ordinary typing keys are reserved. Clear unbinds the application action, Reset selected restores one default, and Reset all restores the full default map. Save applies the whole draft; Cancel leaves active mappings and saved preferences unchanged.
+Open **Tools → Keyboard shortcuts…**, or search for it in the command palette. Filter by command name, stable ID, or current shortcut; select a row and record a new key or chord. Use Ctrl, Alt, Meta, or function keys. Ordinary typing keys are reserved. Clear unbinds the application action, Reset selected restores one default, and Reset all restores the full default map. Save applies the whole draft; Cancel leaves active mappings and saved shortcut preferences unchanged.
 
 Duplicate shortcuts and chord-prefix conflicts disable Save and Export. To move an existing key, first clear or change its previous command. Recording supports up to four combinations. Print defaults to **Ctrl+Alt+P**, while Quick Open retains **Ctrl+P**.
 
@@ -40,3 +40,5 @@ Import reads a version-1 JSON configuration into the draft; it does not apply au
 Mappings persist in QSettings under `shortcuts/v1`. Stable IDs remain independent of translated labels. Menus, toolbar actions and the command palette share the updated actions. Source and rich-text editors allow those registered keys to take precedence over native editing shortcuts. Unassigned native text navigation and the widgets’ native context-menu bindings retain platform behavior; clearing an application binding does not disable every equivalent Qt text-widget key. OS global shortcuts and menu mnemonics are outside this editor’s conflict check.
 
 ![Keyboard shortcut editor](shortcuts.png)
+
+The main window remembers its size, maximized state and dock layout on a successful close, including when opening with `--no-session` or disabling document-session restoration. Preferences, the command palette, Quick Open and the shortcut editor each remember their own window geometry when closed, accepted or cancelled. Cancelling a dialog still leaves its editable preferences unchanged; remembering its size is independent of accepting those changes.

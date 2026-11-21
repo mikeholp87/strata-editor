@@ -18,7 +18,7 @@ class GitPanel;
 class MainWindow : public QMainWindow {
     Q_OBJECT
   public:
-    explicit MainWindow(bool restore = true);
+    explicit MainWindow(bool restoreWorkspace = true);
     DocumentView *current() const;
     DocumentView *newDocument(Document::Mode mode = Document::Mode::Text);
     void openFile(const QString &path, int line = 0);

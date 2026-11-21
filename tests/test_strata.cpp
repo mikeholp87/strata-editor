@@ -6,6 +6,7 @@
 #include "ui/documentview.h"
 #include "ui/mainwindow.h"
 #include "ui/projectsearch.h"
+#include "ui/shortcutdialog.h"
 #include <QFile>
 #include <QClipboard>
 #include <QFileDialog>
@@ -643,6 +644,132 @@ class StrataTests : public QObject {
         QTest::keyClicks(v->code, "edited");
         QVERIFY(w.saveCurrent());
         QCOMPARE(Document::read(p).text, QString("edited"));
+    }
+    void windowSizeRoundTrip_data() {
+        QTest::addColumn<bool>("restoreDocuments");
+        QTest::newRow("with-session") << true;
+        QTest::newRow("without-session") << false;
+    }
+    void windowSizeRoundTrip() {
+        QFETCH(bool, restoreDocuments);
+        QSettings settings("StrataEditor", "StrataEditor");
+        settings.remove("geometry");
+        settings.remove("layout");
+        settings.sync();
+        QFile::remove(Persistence::dataPath("recovery.json"));
+        QFile::remove(Persistence::dataPath("session.json"));
+        const QSize expected(700, 500);
+        {
+            MainWindow first(false);
+            first.resize(expected);
+            first.show();
+            QVERIFY(QTest::qWaitForWindowExposed(&first));
+            QCOMPARE(first.size(), expected);
+            QVERIFY(first.close());
+        }
+        MainWindow reopened(restoreDocuments);
+        reopened.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&reopened));
+        QCOMPARE(reopened.size(), expected);
+    }
+    void maximizedWindowRoundTrip() {
+        QFile::remove(Persistence::dataPath("recovery.json"));
+        QFile::remove(Persistence::dataPath("session.json"));
+        {
+            MainWindow first(false);
+            first.showMaximized();
+            QVERIFY(QTest::qWaitForWindowExposed(&first));
+            QVERIFY(first.isMaximized());
+            QVERIFY(first.close());
+        }
+        MainWindow reopened(false);
+        reopened.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&reopened));
+        QVERIFY(reopened.isMaximized());
+        QSettings settings("StrataEditor", "StrataEditor");
+        settings.remove("geometry");
+        settings.remove("layout");
+        settings.sync();
+    }
+    void cancelledCloseKeepsSavedWindowSize() {
+        QSettings settings("StrataEditor", "StrataEditor");
+        settings.remove("geometry");
+        settings.sync();
+        {
+            MainWindow first(false);
+            first.resize(700, 500);
+            first.show();
+            QVERIFY(QTest::qWaitForWindowExposed(&first));
+            QVERIFY(first.close());
+        }
+        settings.sync();
+        const auto previous = settings.value("geometry").toByteArray();
+        QVERIFY(!previous.isEmpty());
+        MainWindow second(false);
+        second.resize(680, 480);
+        second.show();
+        second.current()->code->insertPlainText("unsaved");
+        QTimer::singleShot(0, [] {
+            for (auto widget : QApplication::topLevelWidgets())
+                if (auto box = qobject_cast<QMessageBox *>(widget))
+                    box->done(QMessageBox::Cancel);
+        });
+        QVERIFY(!second.close());
+        settings.sync();
+        QCOMPARE(settings.value("geometry").toByteArray(), previous);
+        second.current()->model->text()->setModified(false);
+    }
+    void shortcutDialogSizeRoundTrip() {
+        QTemporaryDir dir;
+        QSettings settings(dir.filePath("settings.ini"), QSettings::IniFormat);
+        QAction action;
+        action.setObjectName("new");
+        action.setText("New");
+        action.setShortcut(QKeySequence("Ctrl+N"));
+        {
+            ShortcutDialog first({&action}, settings);
+            first.resize(700, 500);
+            first.show();
+            QVERIFY(QTest::qWaitForWindowExposed(&first));
+            first.reject();
+        }
+        ShortcutDialog reopened({&action}, settings);
+        reopened.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&reopened));
+        QCOMPARE(reopened.size(), QSize(700, 500));
+        QVERIFY(!settings.contains("shortcuts/v1"));
+    }
+    void utilityDialogSizeRoundTrip_data() {
+        QTest::addColumn<QString>("command");
+        QTest::newRow("preferences") << QString("settings");
+        QTest::newRow("command-palette") << QString("palette");
+        QTest::newRow("quick-open") << QString("quickOpen");
+    }
+    void utilityDialogSizeRoundTrip() {
+        QFETCH(QString, command);
+        MainWindow window(false);
+        window.show();
+        auto action = window.findChild<QAction *>(command);
+        QVERIFY(action);
+        bool seen = false;
+        QTimer::singleShot(0, &window, [&] {
+            if (auto dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget())) {
+                seen = true;
+                dialog->resize(700, 500);
+                dialog->reject();
+            }
+        });
+        action->trigger();
+        QVERIFY(seen);
+        QSize restored;
+        QTimer::singleShot(0, &window, [&] {
+            if (auto dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget())) {
+                restored = dialog->size();
+                dialog->reject();
+            }
+        });
+        action->trigger();
+        QCOMPARE(restored, QSize(700, 500));
     }
 };
 QTEST_MAIN(StrataTests)

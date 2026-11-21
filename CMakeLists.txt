@@ -11,7 +11,7 @@ add_library(strata STATIC
  src/editor/codeeditor.cpp src/editor/highlighter.cpp
  src/ui/documentview.cpp src/ui/mainwindow.cpp src/ui/projectsearch.cpp src/ui/gitpanel.cpp
  src/ui/mainwindow_commands.cpp src/ui/mainwindow_writing.cpp
- src/ui/mainwindow_session.cpp src/ui/mainwindow_navigation.cpp src/ui/shortcutdialog.cpp)
+ src/ui/mainwindow_session.cpp src/ui/mainwindow_navigation.cpp src/ui/shortcutdialog.cpp src/ui/windowstate.cpp)
 target_include_directories(strata PUBLIC src)
 target_compile_definitions(strata PUBLIC STRATA_PRODUCT_NAME="${STRATA_PRODUCT_NAME}")
 target_link_libraries(strata PUBLIC Qt6::Widgets Qt6::Concurrent Qt6::PrintSupport)

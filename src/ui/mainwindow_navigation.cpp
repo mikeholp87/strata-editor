@@ -6,6 +6,7 @@
 #include "mainwindow.h"
 #include "projectsearch.h"
 #include "shortcutdialog.h"
+#include "windowstate.h"
 #include <QJsonArray>
 #include <QPrintDialog>
 #include <QPrintPreviewDialog>
@@ -95,6 +96,7 @@ void MainWindow::palette(bool quick) {
     if (list->count())
         list->setCurrentRow(0);
     input->setFocus();
+    WindowState::rememberDialog(d, settings, quick ? "quickOpen" : "commandPalette");
     d.exec();
 }
 void MainWindow::preferences() {
@@ -128,6 +130,7 @@ void MainWindow::preferences() {
     l->addRow(buttons);
     connect(buttons, &QDialogButtonBox::accepted, &d, &QDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected, &d, &QDialog::reject);
+    WindowState::rememberDialog(d, settings, "preferences");
     if (d.exec() == QDialog::Accepted) {
         settings.setValue("font", font->currentFont().family());
         settings.setValue("fontSize", size->value());

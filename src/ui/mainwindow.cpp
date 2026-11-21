@@ -13,7 +13,7 @@
 #include <QtConcurrent>
 #include <QtWidgets>
 
-MainWindow::MainWindow(bool restore) : settings("StrataEditor", "StrataEditor") {
+MainWindow::MainWindow(bool restoreWorkspace) : settings("StrataEditor", "StrataEditor") {
     setObjectName("mainWindow");
     setWindowTitle(STRATA_PRODUCT_NAME);
     resize(1180, 780);
@@ -185,11 +185,10 @@ MainWindow::MainWindow(bool restore) : settings("StrataEditor", "StrataEditor") 
     timer->setInterval(15000);
     connect(timer, &QTimer::timeout, this, &MainWindow::recoverySnapshot);
     timer->start();
-    if (restore) {
-        restoreGeometry(settings.value("geometry").toByteArray());
-        restoreState(settings.value("layout").toByteArray());
+    restoreGeometry(settings.value("geometry").toByteArray());
+    restoreState(settings.value("layout").toByteArray());
+    if (restoreWorkspace)
         restoreSession();
-    }
     if (!tabs->count() && loading.isEmpty())
         newDocument();
     updateUi();
