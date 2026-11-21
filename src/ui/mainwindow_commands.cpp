@@ -22,8 +22,9 @@ void MainWindow::buildCommands() {
     auto toolbar = addToolBar(tr("Quick actions"));
     toolbar->setObjectName("quickActions");
     toolbar->setMovable(false);
-    toolbar->addAction(
-        command("new", tr("New text file"), QKeySequence::New, [this] { newDocument(); }, file));
+    auto newFile = command("new", tr("New text file"), QKeySequence::New, [this] { newDocument(); }, file);
+    toolbar->addAction(newFile);
+    qobject_cast<QToolButton *>(toolbar->widgetForAction(newFile))->setText(tr("New"));
     command("newMarkdown", tr("New Markdown"), {}, [this] { newDocument(Document::Mode::Markdown); }, file);
     command("newHtml", tr("New rich-text HTML"), {}, [this] { newDocument(Document::Mode::Html); }, file);
     toolbar->addAction(command(
@@ -104,9 +105,13 @@ void MainWindow::buildCommands() {
     auto cursorAction = [this, edit](QString id, QString title, QKeySequence key, auto fn) {
         command(
             id, title, key,
-            [this, fn] {
-                if (current())
-                    fn(current());
+            [this, fn, id] {
+                if (auto v = current()) {
+                    if (v->preview && v->markdownView() == DocumentView::MarkdownView::Preview &&
+                        id != "copy" && id != "selectAll")
+                        v->setMarkdownView(DocumentView::MarkdownView::Split);
+                    fn(v);
+                }
             },
             edit);
     };
@@ -125,6 +130,10 @@ void MainWindow::buildCommands() {
         c.removeSelectedText();
     });
     cursorAction("copy", tr("Copy"), QKeySequence::Copy, [](DocumentView *v) {
+        if (v->preview && v->markdownView() == DocumentView::MarkdownView::Preview) {
+            v->preview->copy();
+            return;
+        }
         if (v->rich) {
             v->activeRich()->copy();
             return;
@@ -140,6 +149,10 @@ void MainWindow::buildCommands() {
         v->setCursor(c);
     });
     cursorAction("selectAll", tr("Select all"), QKeySequence::SelectAll, [](DocumentView *v) {
+        if (v->preview && v->markdownView() == DocumentView::MarkdownView::Preview) {
+            v->preview->selectAll();
+            return;
+        }
         auto c = v->cursor();
         c.select(QTextCursor::Document);
         v->setCursor(c);
@@ -148,6 +161,7 @@ void MainWindow::buildCommands() {
         "find", tr("Find"), QKeySequence::Find,
         [this] {
             findBar->show();
+            findChild<QPushButton *>("expandReplace")->setChecked(false);
             findText->setFocus();
             findText->selectAll();
         },
@@ -156,6 +170,7 @@ void MainWindow::buildCommands() {
         "replace", tr("Find and replace"), QKeySequence("Ctrl+H"),
         [this] {
             findBar->show();
+            findChild<QPushButton *>("expandReplace")->setChecked(true);
             findText->setFocus();
         },
         edit);
@@ -208,6 +223,8 @@ void MainWindow::buildCommands() {
         c.insertText(c.selectedText().toLower());
     });
     cursorAction("trim", tr("Trim trailing whitespace"), {}, [](DocumentView *v) {
+        if (v->preview && v->markdownView() == DocumentView::MarkdownView::Preview)
+            v->setMarkdownView(DocumentView::MarkdownView::Split);
         QTextCursor c(v->model->text());
         c.beginEditBlock();
         auto b = v->model->text()->lastBlock();
@@ -234,6 +251,9 @@ void MainWindow::buildCommands() {
                     current()->model->setNewline(e);
             },
             edit);
+    auto toolbarSpacer = new QWidget;
+    toolbarSpacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    toolbar->addWidget(toolbarSpacer);
     toolbar->addAction(
         command("palette", tr("Commands…"), QKeySequence("Ctrl+Shift+P"), [this] { palette(); }, view));
     command("quickOpen", tr("Quick open…"), QKeySequence("Ctrl+P"), [this] { palette(true); }, view);

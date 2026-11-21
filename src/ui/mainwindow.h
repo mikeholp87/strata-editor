@@ -12,6 +12,7 @@ class QToolBar;
 class QDockWidget;
 class QFileSystemModel;
 class QTreeView;
+class QLabel;
 class ProjectSearch;
 class GitPanel;
 class MainWindow : public QMainWindow {
@@ -36,7 +37,8 @@ class MainWindow : public QMainWindow {
     QSettings settings;
     QTabWidget *tabs;
     QToolBar *formatBar;
-    QWidget *findBar;
+    QWidget *findBar, *replaceRow;
+    QLabel *cursorStatus, *documentStatus;
     QLineEdit *findText, *replaceText;
     QCheckBox *matchCase, *wholeWord, *regex;
     QDockWidget *explorerDock, *searchDock, *gitDock;

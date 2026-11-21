@@ -3,8 +3,10 @@
 #include <QRegularExpression>
 #include <QSyntaxHighlighter>
 class Highlighter : public QSyntaxHighlighter {
+    Q_OBJECT
   public:
     explicit Highlighter(QTextDocument *doc, const QString &language);
+    void setLightTheme(bool value);
     void setLanguage(const QString &value) {
         if (language == value)
             return;
@@ -18,5 +20,6 @@ class Highlighter : public QSyntaxHighlighter {
 
   private:
     QString language;
+    bool light = false;
     QHash<QString, QRegularExpression> patterns;
 };

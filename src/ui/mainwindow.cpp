@@ -31,37 +31,90 @@ MainWindow::MainWindow(bool restore) : settings("StrataEditor", "StrataEditor") 
     layout->setSpacing(0);
     layout->addWidget(tabs);
     findBar = new QWidget;
-    auto findLayout = new QHBoxLayout(findBar);
+    findBar->setObjectName("findBar");
+    auto findLayout = new QVBoxLayout(findBar);
+    findLayout->setContentsMargins(8, 6, 8, 6);
+    auto findRow = new QHBoxLayout;
     findText = new QLineEdit;
     findText->setObjectName("findText");
     findText->setPlaceholderText(tr("Find"));
+    findText->setAccessibleName(tr("Find text"));
+    findRow->addWidget(findText, 1);
+    auto next = new QPushButton(tr("Next"));
+    findRow->addWidget(next);
+    connect(next, &QPushButton::clicked, this, [this] { findNext(); });
+    auto expandReplace = new QPushButton(tr("Replace…"));
+    expandReplace->setObjectName("expandReplace");
+    expandReplace->setCheckable(true);
+    findRow->addWidget(expandReplace);
+    auto closeFind = new QToolButton;
+    closeFind->setText(tr("×"));
+    closeFind->setAccessibleName(tr("Close find"));
+    closeFind->setToolTip(tr("Close find (Esc)"));
+    closeFind->setFocusPolicy(Qt::StrongFocus);
+    findRow->addWidget(closeFind);
+    findLayout->addLayout(findRow);
+    auto options = new QHBoxLayout;
+    matchCase = new QCheckBox(tr("Match case"));
+    wholeWord = new QCheckBox(tr("Whole words"));
+    regex = new QCheckBox(tr("Regular expression"));
+    for (auto option : {matchCase, wholeWord, regex})
+        options->addWidget(option);
+    options->addStretch();
+    findLayout->addLayout(options);
+    replaceRow = new QWidget;
+    replaceRow->setObjectName("replaceRow");
+    auto replaceLayout = new QHBoxLayout(replaceRow);
+    replaceLayout->setContentsMargins(0, 0, 0, 0);
     replaceText = new QLineEdit;
     replaceText->setObjectName("replaceText");
-    replaceText->setPlaceholderText(tr("Replace"));
-    matchCase = new QCheckBox(tr("Aa"));
-    wholeWord = new QCheckBox(tr("Word"));
-    regex = new QCheckBox(tr("Regex"));
-    for (auto w : QList<QWidget *>{findText, replaceText, matchCase, wholeWord, regex})
-        findLayout->addWidget(w);
-    auto findButton = [&](QString label, auto fn) {
-        auto b = new QPushButton(label);
-        findLayout->addWidget(b);
-        connect(b, &QPushButton::clicked, this, fn);
+    replaceText->setPlaceholderText(tr("Replace with"));
+    replaceText->setAccessibleName(tr("Replacement text"));
+    replaceLayout->addWidget(replaceText, 1);
+    auto replaceOne = new QPushButton(tr("Replace"));
+    auto replaceAll = new QPushButton(tr("Replace all"));
+    replaceLayout->addWidget(replaceOne);
+    replaceLayout->addWidget(replaceAll);
+    connect(replaceOne, &QPushButton::clicked, this, [this] { replace(); });
+    connect(replaceAll, &QPushButton::clicked, this, [this] { replace(true); });
+    connect(expandReplace, &QPushButton::toggled, replaceRow, &QWidget::setVisible);
+    findLayout->addWidget(replaceRow);
+    replaceRow->hide();
+    auto hideFind = [this] {
+        findBar->hide();
+        if (auto v = current()) {
+            if (v->preview && v->markdownView() == DocumentView::MarkdownView::Preview)
+                v->preview->setFocus();
+            else if (v->code)
+                v->activeCode()->setFocus();
+            else
+                v->rich->setFocus();
+        }
     };
-    findButton(tr("Next"), [this] { findNext(); });
-    findButton(tr("Replace"), [this] { replace(); });
-    findButton(tr("All"), [this] { replace(true); });
-    findButton(tr("×"), [this] { findBar->hide(); });
+    connect(closeFind, &QToolButton::clicked, this, hideFind);
+    auto escapeFind = new QShortcut(QKeySequence(Qt::Key_Escape), findBar);
+    escapeFind->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(escapeFind, &QShortcut::activated, this, hideFind);
     layout->addWidget(findBar);
     findBar->hide();
     setCentralWidget(center);
+    cursorStatus = new QLabel;
+    cursorStatus->setObjectName("cursorStatus");
+    cursorStatus->setContentsMargins(8, 0, 8, 0);
+    documentStatus = new QLabel;
+    documentStatus->setObjectName("documentStatus");
+    documentStatus->setContentsMargins(8, 0, 8, 0);
+    statusBar()->addPermanentWidget(cursorStatus);
+    statusBar()->addPermanentWidget(documentStatus);
     connect(findText, &QLineEdit::returnPressed, this, [this] { findNext(); });
-    explorerDock = new QDockWidget(tr("PROJECT"), this);
+    explorerDock = new QDockWidget(tr("Project"), this);
     explorerDock->setObjectName("explorerDock");
     files = new QFileSystemModel(this);
     files->setReadOnly(true);
     files->setRootPath(QDir::homePath());
     tree = new QTreeView;
+    tree->setAccessibleName(tr("Project files"));
+    tree->setMinimumWidth(120);
     tree->setModel(files);
     tree->setHeaderHidden(true);
     for (int i = 1; i < 4; ++i)
@@ -69,6 +122,7 @@ MainWindow::MainWindow(bool restore) : settings("StrataEditor", "StrataEditor") 
     tree->setRootIndex(files->index(QDir::homePath()));
     explorerDock->setWidget(tree);
     addDockWidget(Qt::LeftDockWidgetArea, explorerDock);
+    resizeDocks({explorerDock}, {230}, Qt::Horizontal);
     connect(tree, &QTreeView::doubleClicked, this, [this](const QModelIndex &i) {
         if (!files->isDir(i))
             openFile(files->filePath(i));
@@ -91,14 +145,14 @@ MainWindow::MainWindow(bool restore) : settings("StrataEditor", "StrataEditor") 
         m.exec(tree->viewport()->mapToGlobal(pos));
     });
     projectSearch = new ProjectSearch;
-    searchDock = new QDockWidget(tr("PROJECT SEARCH"), this);
+    searchDock = new QDockWidget(tr("Project search"), this);
     searchDock->setObjectName("searchDock");
     searchDock->setWidget(projectSearch);
     addDockWidget(Qt::BottomDockWidgetArea, searchDock);
     searchDock->hide();
     connect(projectSearch, &ProjectSearch::openHit, this, &MainWindow::openFile);
     git = new GitPanel;
-    gitDock = new QDockWidget(tr("GIT"), this);
+    gitDock = new QDockWidget(tr("Git"), this);
     gitDock->setObjectName("gitDock");
     gitDock->setWidget(git);
     addDockWidget(Qt::RightDockWidgetArea, gitDock);
@@ -121,12 +175,9 @@ MainWindow::MainWindow(bool restore) : settings("StrataEditor", "StrataEditor") 
             watcher.addPath(path);
         for (int i = 0; i < tabs->count(); ++i) {
             auto v = qobject_cast<DocumentView *>(tabs->widget(i));
-            if (v->model->path() == path && v->model->changedOnDisk()) {
-                tabs->setTabToolTip(i, tr("Changed externally. Reload or save a separate copy."));
-                statusBar()->showMessage(
-                    tr("File changed externally: %1 — reload or save a copy; your edits are preserved.")
-                        .arg(path),
-                    15000);
+            if (v->model->path() == path) {
+                v->setExternalChange(v->model->changedOnDisk());
+                updateUi();
             }
         }
     });
@@ -166,7 +217,14 @@ DocumentView *MainWindow::attach(Document *doc) {
     auto syntax = new Highlighter(doc->text(), doc->mode() == Document::Mode::Markdown
                                                    ? "Markdown"
                                                    : Highlighter::languageForPath(doc->path()));
-    Q_UNUSED(syntax);
+    connect(view, &DocumentView::reloadRequested, this, [this, view] {
+        tabs->setCurrentWidget(view);
+        reloadCurrent();
+    });
+    connect(view, &DocumentView::saveCopyRequested, this, [this, view] {
+        tabs->setCurrentWidget(view);
+        saveCurrent(true);
+    });
     if (view->code)
         view->code->setProperty("language", Highlighter::languageForPath(doc->path()));
     connect(doc->text(), &QTextDocument::modificationChanged, this, &MainWindow::updateUi);
@@ -290,6 +348,7 @@ bool MainWindow::saveCurrent(bool saveAs) {
         return false;
     }
     watcher.addPath(d->path());
+    v->setExternalChange(false);
     recoverySnapshot();
     updateUi();
     return true;
@@ -320,17 +379,21 @@ bool MainWindow::closeTab(int i) {
 void MainWindow::configureViews() {
     QFont font(settings.value("font", "monospace").toString(), settings.value("fontSize", 12).toInt());
     font.setStyleHint(QFont::Monospace);
-    for (int i = 0; i < tabs->count(); ++i)
-        qobject_cast<DocumentView *>(tabs->widget(i))
-            ->configure(font, settings.value("wrap", false).toBool(), settings.value("tabWidth", 4).toInt(),
+    for (int i = 0; i < tabs->count(); ++i) {
+        auto view = qobject_cast<DocumentView *>(tabs->widget(i));
+        view->configure(font, settings.value("wrap", false).toBool(), settings.value("tabWidth", 4).toInt(),
                         settings.value("spaces", true).toBool(),
                         settings.value("lineNumbers", true).toBool());
+        for (auto syntax : view->model->text()->findChildren<Highlighter *>())
+            syntax->setLightTheme(settings.value("light", false).toBool());
+    }
 }
 void MainWindow::updateUi() {
     for (int i = 0; i < tabs->count(); ++i) {
         auto v = qobject_cast<DocumentView *>(tabs->widget(i));
         tabs->setTabText(i, v->model->title() + (v->model->text()->isModified() ? " •" : ""));
-        tabs->setTabToolTip(i, v->model->path());
+        tabs->setTabToolTip(i, v->model->path() +
+            (v->externallyChanged() ? tr("\nChanged on disk. Reload or save a copy.") : QString()));
     }
     auto v = current();
     if (formatBar)
@@ -338,23 +401,26 @@ void MainWindow::updateUi() {
     for (auto action : commands)
         if (action->objectName().startsWith("format"))
             action->setEnabled(v && v->rich);
-    if (!v)
+    if (!v) {
+        cursorStatus->clear();
+        documentStatus->clear();
         return;
+    }
     auto c = v->cursor();
     int chars = v->model->text()->characterCount() - 1;
     int words = v->model->property("words").toInt();
-    statusBar()->showMessage(
-        tr("Ln %1, Col %2   ·   %3 chars / %4 words / ~%5 min   ·   %6   ·   %7%8   ·   %9   ·   %10: %11")
-            .arg(c.blockNumber() + 1)
-            .arg(c.positionInBlock() + 1)
-            .arg(chars)
-            .arg(words)
-            .arg(qMax(1, (words + 199) / 200))
-            .arg(v->model->encoding(), v->model->newline(),
-                 v->model->mixed() ? tr(" (mixed; normalizes on save)") : "",
-                 Highlighter::languageForPath(v->model->path()),
-                 settings.value("spaces", true).toBool() ? tr("Spaces") : tr("Tabs"))
-            .arg(settings.value("tabWidth", 4).toInt()));
+    cursorStatus->setText(tr("Ln %1, Col %2").arg(c.blockNumber() + 1).arg(c.positionInBlock() + 1));
+    auto language = v->model->mode() == Document::Mode::Markdown
+                        ? QString("Markdown") : Highlighter::languageForPath(v->model->path());
+    documentStatus->setText(tr("%1   %2   %3%4")
+                               .arg(language, v->model->encoding(), v->model->newline(),
+                                    v->model->mixed() ? tr(" (mixed)") : QString()));
+    documentStatus->setToolTip(tr("%1 characters, %2 words, about %3 min\n%4: %5%6")
+                                  .arg(chars).arg(words).arg(qMax(1, (words + 199) / 200))
+                                  .arg(settings.value("spaces", true).toBool() ? tr("Spaces") : tr("Tabs"))
+                                  .arg(settings.value("tabWidth", 4).toInt())
+                                  .arg(v->model->mixed()
+                                           ? tr("\nMixed line endings normalize on save.") : QString()));
     setWindowTitle(v->model->title() + " — " + STRATA_PRODUCT_NAME);
 }
 void MainWindow::updateTheme() {
@@ -368,16 +434,24 @@ void MainWindow::updateTheme() {
     p.setColor(QPalette::Button, QColor(light ? "#DFE7EF" : "#18212D"));
     p.setColor(QPalette::ButtonText, p.color(QPalette::Text));
     p.setColor(QPalette::Highlight, QColor("#286FB0"));
+    p.setColor(QPalette::Link, QColor(light ? "#1E659E" : "#4DA8FF"));
     p.setColor(QPalette::HighlightedText, Qt::white);
     p.setColor(QPalette::PlaceholderText, QColor(light ? "#536477" : "#93A3B5"));
     p.setColor(QPalette::ToolTipBase, p.color(QPalette::Base));
     p.setColor(QPalette::ToolTipText, p.color(QPalette::Text));
     qApp->setPalette(p);
-    qApp->setStyleSheet(
-        "QToolBar {spacing: 5px; padding: 4px; border: none;} QToolButton, QPushButton {padding: 5px 8px;} "
-        "QTabBar::tab {padding: 9px 16px;} QTabBar::tab:selected {border-bottom: 2px solid #4DA8FF;} "
-        "QDockWidget::title {padding: 8px;} QLineEdit, QSpinBox, QComboBox {padding: 4px;} QLineEdit:focus, "
-        "QComboBox:focus {border: 1px solid #4DA8FF;} QTreeView {border:none;} QStatusBar {padding: 4px;}");
+    qApp->setStyleSheet(QString(
+        "QToolBar {spacing: 2px; padding: 2px; border: none;} "
+        "QToolButton, QPushButton {padding: 4px 8px;} "
+        "QTabBar::tab {padding: 7px 12px;} "
+        "QTabBar::tab:selected {border-bottom: 2px solid %1;} "
+        "QDockWidget::title {padding: 6px;} QLineEdit, QSpinBox, QComboBox {padding: 4px;} "
+        "QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QAbstractButton:focus {border: 2px solid %1;} "
+        "QTreeView {border:none;} QStatusBar {padding: 2px;} "
+        "#markdownControls QToolButton:checked {background: palette(alternate-base); "
+        "border-bottom: 2px solid %1;} "
+        "#externalWarning {background: palette(alternate-base);}")
+        .arg(p.color(QPalette::Link).name()));
     configureViews();
 }
 void MainWindow::reloadCurrent() {
@@ -392,8 +466,11 @@ void MainWindow::reloadCurrent() {
     auto data = Document::read(v->model->path());
     if (!data.error.isEmpty())
         QMessageBox::warning(this, tr("Reload failed"), data.error);
-    else
+    else {
         v->model->apply(data);
+        v->setExternalChange(false);
+        updateUi();
+    }
 }
 void MainWindow::closeEvent(QCloseEvent *event) {
     if (!loading.isEmpty()) {
