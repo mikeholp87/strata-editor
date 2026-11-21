@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#edeff5" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0f1117" media="(prefers-color-scheme: dark)">
+  <title>Strata Editor: native text, code and Markdown editing</title>
+  <meta name="description" content="A free, native C++20 and Qt 6 editor for text, code, Markdown and formatted HTML. Split views, live preview, customizable shortcuts and local recovery. No telemetry or account.">
+  <link rel="canonical" href="https://mikeholp87.github.io/strata-editor/">
+  <link rel="icon" href="./strata-editor.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./site.css">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Strata Editor">
+  <meta property="og:title" content="Strata Editor: one workspace for code and words">
+  <meta property="og:description" content="Native text, code, Markdown and rich HTML editing. Source/Split/Preview modes, customizable shortcuts and local recovery. Free and open source.">
+  <meta property="og:url" content="https://mikeholp87.github.io/strata-editor/">
+  <meta property="og:image" content="https://mikeholp87.github.io/strata-editor/screenshot.png">
+  <meta property="og:image:alt" content="Strata Editor showing Markdown source beside its rendered preview in the dark theme">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Strata Editor: one workspace for code and words">
+  <meta name="twitter:description" content="Native C++20 and Qt 6 editing for text, code, Markdown and formatted HTML. No telemetry or account.">
+  <meta name="twitter:image" content="https://mikeholp87.github.io/strata-editor/screenshot.png">
+  <meta name="twitter:image:alt" content="Strata Editor showing Markdown source beside its rendered preview in the dark theme">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Strata Editor",
+    "description": "A native desktop editor for text, source code, Markdown and formatted HTML, with split views, live preview, configurable shortcuts and local recovery.",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Linux, Windows",
+    "softwareVersion": "0.1.0 preview",
+    "url": "https://mikeholp87.github.io/strata-editor/",
+    "sameAs": "https://github.com/mikeholp87/strata-editor",
+    "license": "https://github.com/mikeholp87/strata-editor/blob/main/LICENSE",
+    "isAccessibleForFree": true,
+    "author": {"@type": "Person", "name": "Mike Holp"}
+  }
+  </script>
+</head>
+<body>
+  <a class="skip" href="#content">Skip to content</a>
+  <div class="wrap">
+    <header class="site-header">
+      <a class="brand" href="./" aria-label="Strata Editor home"><img src="./strata-editor.svg" alt="" width="36" height="36">Strata Editor</a>
+      <nav class="nav" aria-label="Main navigation">
+        <a class="hide-small" href="#features">Features</a>
+        <a class="hide-small" href="#screenshots">Screenshots</a>
+        <a href="#build">Build</a>
+        <a class="pill" href="https://github.com/mikeholp87/strata-editor">GitHub</a>
+      </nav>
+    </header>
+    <main id="content">
+      <section class="hero" aria-labelledby="hero-title">
+        <p class="status">Free and open source. Version 0.1.0 preview.</p>
+        <h1 id="hero-title">One workspace for code and words.</h1>
+        <p class="lead">Edit text, source code, Markdown and formatted HTML in a native desktop app. Keep two views of a document open, see your Markdown as you write, and work without an account or cloud service.</p>
+        <div class="actions">
+          <a class="button" href="#build">Build from source</a>
+          <a class="button secondary" href="https://github.com/mikeholp87/strata-editor">View on GitHub</a>
+        </div>
+        <ul class="badges" aria-label="Project highlights">
+          <li>C++20 and Qt 6</li><li>No telemetry</li><li>Works offline</li><li>MIT licensed</li>
+        </ul>
+        <figure class="workspace">
+          <picture>
+              <source media="(prefers-color-scheme: light)" srcset="./screenshot-light.png">
+              <img src="./screenshot.png" width="1416" height="936" fetchpriority="high" alt="Strata Editor with a project explorer, Markdown source on the left, and a rendered preview on the right">
+          </picture>
+          <figcaption>The real Strata workspace. Source, split and read-only preview modes stay one click away.</figcaption>
+        </figure>
+      </section>
+
+      <section class="section" id="features" aria-labelledby="features-title">
+        <div class="section-head">
+          <h2 id="features-title">Code, notes and documents together</h2>
+          <p>Use the same native workspace for a source file, project documentation or a formatted document.</p>
+        </div>
+        <div class="feature-grid">
+          <article class="card"><h3>Text and code</h3><p>Tabs, line numbers, lexical syntax highlighting, auto-indent, bracket pairing, comments and line commands. Split a document side by side or above and below.</p></article>
+          <article class="card"><h3>Markdown, both ways</h3><p>Switch between Source, Split and Preview. Read in a padded column, keep your original Markdown intact, and export HTML or PDF.</p></article>
+          <article class="card"><h3>Formatted HTML</h3><p>Write visually with headings, emphasis, fonts, colors, lists, links and tables. Formatting shares the document’s undo history.</p></article>
+          <article class="card"><h3>Your keyboard layout</h3><p>Search commands, record keys or chords, and import or export shortcut JSON. Conflicts are checked before saved mappings take effect.</p></article>
+          <article class="card"><h3>Project navigation</h3><p>Browse files, filter the loaded project tree, find commands and search across project text. Optional Git actions and an external terminal stay within reach.</p></article>
+          <article class="card"><h3>Clear document state</h3><p>Atomic saves, external-change warnings and local recovery snapshots help keep track of your work. Reload after reviewing, or save your edits as a separate copy.</p></article>
+        </div>
+      </section>
+
+      <section class="section" id="screenshots" aria-labelledby="screenshots-title">
+        <div class="section-head"><h2 id="screenshots-title">Light and dark, with room to read</h2><p>The editor has separate syntax palettes for both themes. Document position and encoding stay separate from temporary messages.</p></div>
+        <div class="shots-grid">
+          <figure class="shot"><a href="./screenshot.png"><img src="./screenshot.png" width="1416" height="936" loading="lazy" alt="Strata Editor’s Markdown split view in the dark theme"></a><figcaption>Dark theme. Open the image for a full-size view.</figcaption></figure>
+          <figure class="shot"><a href="./screenshot-light.png"><img src="./screenshot-light.png" width="1416" height="936" loading="lazy" alt="Strata Editor’s Markdown split view in the light theme"></a><figcaption>Light theme, with theme-specific syntax colors.</figcaption></figure>
+        </div>
+        <p class="note">Default keys include <kbd>Ctrl</kbd> + <kbd>P</kbd> for Quick Open, <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>P</kbd> for commands, and <kbd>Ctrl</kbd> + <kbd>H</kbd> for Find and replace. Change registered bindings in <strong>Tools → Keyboard shortcuts…</strong>.</p>
+      </section>
+
+      <section class="section" id="platforms" aria-labelledby="platforms-title">
+        <div class="section-head"><h2 id="platforms-title">A working desktop preview</h2><p>Strata is available as source code and CI build artifacts. No public release or signed installer has been published yet.</p></div>
+        <div class="table-wrap" tabindex="0" role="region" aria-label="Platform validation, horizontally scrollable">
+          <table aria-labelledby="platforms-title">
+            <thead><tr><th scope="col">Platform</th><th scope="col">Validation and delivery</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Linux</th><td>Local Debian x86_64 builds with Qt 6.11.2; X11/Xvfb screenshots and behavioral tests. Ubuntu 24.04 CI builds, tests and packages DEB/TGZ artifacts. Packages need compatible system Qt libraries.</td></tr>
+              <tr><th scope="row">Windows x64</th><td>MSVC 2022 and Qt 6.8.3 build/test CI, with a ZIP prepared by windeployqt. Manual desktop, printing and signed-installer validation remain pending.</td></tr>
+              <tr><th scope="row">macOS / Wayland</th><td>Not validated. Screen-reader and physical-printing checks also remain release work.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="section" id="build" aria-labelledby="build-title">
+        <div class="build-panel">
+          <div class="section-head"><h2 id="build-title">Build from source</h2><p>You’ll need a C++20 compiler, CMake 3.22+ and Qt 6.4+ development packages. No Python or Node runtime is needed by the editor.</p></div>
+          <h3>Debian / Ubuntu</h3>
+          <pre tabindex="0" role="region" aria-label="Linux build commands"><code>sudo apt update
+sudo apt install build-essential cmake ninja-build qt6-base-dev git
+
+git clone https://github.com/mikeholp87/strata-editor.git
+cd strata-editor
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build --parallel
+ctest --test-dir build --output-on-failure
+./build/strata-editor</code></pre>
+          <p>Open a project folder with <code>./build/strata-editor /path/to/project</code>, or use the Project menu in an existing window. Use <code>--no-session</code> to start without restoring your workspace.</p>
+          <details><summary>Build on Windows</summary><p>Use a Visual Studio 2022 developer PowerShell and a matching Qt 6 x64 installation. Replace the example Qt path with your own.</p>
+            <pre tabindex="0" role="region" aria-label="Windows build commands"><code>git clone https://github.com/mikeholp87/strata-editor.git
+cd strata-editor
+$strataQt = "C:/Qt/6.8.3/msvc2022_64"
+$env:PATH = "$strataQt/bin;$env:PATH"
+cmake -S . -B build -A x64 -DCMAKE_PREFIX_PATH="$strataQt"
+cmake --build build --config Release --parallel
+ctest --test-dir build -C Release --output-on-failure
+.\build\Release\strata-editor.exe</code></pre>
+          </details>
+          <p class="build-links"><a href="https://github.com/mikeholp87/strata-editor/blob/main/docs/BUILDING.md">Installation and packaging guide</a><a href="https://github.com/mikeholp87/strata-editor/actions/workflows/build.yml">CI build artifacts</a></p>
+        </div>
+      </section>
+
+      <section class="section" id="preview" aria-labelledby="preview-title">
+        <div class="section-head"><h2 id="preview-title">Know the preview’s boundaries</h2><p>The basics are implemented. Strata is still a preview, with explicit limits rather than a claim to replace every IDE feature.</p></div>
+        <div class="limits-grid">
+          <div><h3>Files and search</h3><p>Files over 8 MiB are refused. Quick Open uses the loaded explorer tree. Project search is literal, skips files over 2 MiB and stops at 1,000 matches. Regex replacements are literal text.</p></div>
+          <div><h3>Editing and formatting</h3><p>Highlighting is lexical. LSP, Tree-sitter, folding, multiple cursors, spellcheck and an embedded terminal are not implemented. Visual HTML uses Qt’s supported subset and may normalize unsupported markup.</p></div>
+        </div>
+        <p><a href="https://github.com/mikeholp87/strata-editor/blob/main/docs/FEATURES.md">Read the exact feature boundaries</a> or follow the <a href="https://github.com/mikeholp87/strata-editor/blob/main/docs/ROADMAP.md">roadmap</a>.</p>
+      </section>
+
+      <section class="section faq" id="faq" aria-labelledby="faq-title">
+        <div class="section-head"><h2 id="faq-title">Questions</h2></div>
+        <details><summary>Does Strata send my documents anywhere?</summary><p>No. There is no telemetry, account or cloud service. Editing and preview rendering work offline, and document content cannot load remote images or resources. Optional Git and terminal actions use your system tools only when you request them.</p></details>
+        <details><summary>Where are my settings and recovery files?</summary><p>Preferences use QSettings under StrataEditor/StrataEditor. Session and recovery files use the platform’s application-data directory, normally <code>~/.local/share/StrataEditor/strata-editor</code> on Linux. Recovery files can contain unsaved document text. A single application instance owns this storage.</p></details>
+        <details><summary>What happens if a file changes outside Strata?</summary><p>The editor keeps your buffer and displays a persistent warning. Saving over the changed file is blocked. Reload after reviewing, or save a separate copy; reloading unsaved edits asks before discarding them.</p></details>
+        <details><summary>Can I use it like a complete IDE?</summary><p>The preview handles everyday text, code and writing workflows. Language servers, parser-based highlighting, project-wide replacement and other advanced features remain on the roadmap. See the <a href="https://github.com/mikeholp87/strata-editor/blob/main/README.md">README</a> for current capabilities and limitations.</p></details>
+      </section>
+    </main>
+    <footer class="site-footer"><p>Strata Editor by Mike Holp. Original source is MIT licensed.</p><nav aria-label="Footer"><a href="https://github.com/mikeholp87/strata-editor">GitHub</a><a href="https://github.com/mikeholp87/strata-editor/blob/main/docs/USER_GUIDE.md">User guide</a><a href="https://github.com/mikeholp87/strata-editor/blob/main/LICENSE">License</a><a href="https://github.com/mikeholp87/strata-editor/blob/main/SECURITY.md">Security</a><a href="https://mikeholp87.github.io/">All projects</a></nav></footer>
+  </div>
+</body>
+</html>
