@@ -35,13 +35,26 @@ Language detection and **lexical** syntax highlighting cover C/C++, Rust, Python
 
 ## Get started
 
-There is **no published release or signed installer yet**. Build from source, or inspect the Linux and Windows artifacts from successful [Build and test runs](https://github.com/mikeholp87/strata-editor/actions/workflows/build.yml) (artifact downloads may require GitHub sign-in).
+Install the Linux preview through the signed [APT repository](https://mikeholp87.github.io/apt/) or download a `.deb` from [GitHub Releases](https://github.com/mikeholp87/strata-editor/releases). Packages are built on Ubuntu 24.04 for **amd64** and require compatible system libraries. Windows ZIPs remain available from successful [Build and test runs](https://github.com/mikeholp87/strata-editor/actions/workflows/build.yml).
 
 Requirements: a C++20 compiler, **CMake 3.22+**, and **Qt 6.4+** development packages with Widgets, Concurrent, PrintSupport and Test. Ninja is optional; omit `-G Ninja` if using another generator.
 
-### Linux
+### Install with APT
 
-On Debian/Ubuntu, install the build dependencies, then clone and build:
+On Ubuntu 24.04 or a compatible Debian-based system:
+
+```sh
+sudo install -d -m 0755 /etc/apt/keyrings
+curl -fsSL https://mikeholp87.github.io/apt/apt.asc | sudo tee /etc/apt/keyrings/mikeholp87-apt.asc >/dev/null
+echo "deb [signed-by=/etc/apt/keyrings/mikeholp87-apt.asc] https://mikeholp87.github.io/apt/ ./" | sudo tee /etc/apt/sources.list.d/mikeholp87-apt.list
+sudo apt update && sudo apt install strata-editor
+```
+
+Launch `strata-editor` or use the application menu. Future releases arrive through `sudo apt upgrade`.
+
+### Build on Linux
+
+Install the build dependencies, then clone and build:
 
 ```sh
 sudo apt update
@@ -90,7 +103,7 @@ cpack --config build/CPackConfig.cmake -G DEB
 cpack --config build/CPackConfig.cmake -G TGZ
 ```
 
-The Linux packages require compatible system Qt libraries; build on the intended distribution. The TGZ is not an AppImage. Windows CI prepares a ZIP with `windeployqt`; signed installers and automatic updates are not provided. See [building and installation](docs/BUILDING.md) for packaging and license requirements.
+The Linux packages require compatible system Qt libraries; build on the intended distribution. The TGZ is not an AppImage. Windows CI prepares a ZIP with `windeployqt`; signed Windows installers are not provided. APT handles updates to the Linux package. See [building and installation](docs/BUILDING.md) for packaging and license requirements.
 
 Set the display name at configure time with `-DSTRATA_PRODUCT_NAME="Your Editor"`.
 

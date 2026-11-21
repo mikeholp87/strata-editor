@@ -1,20 +1,84 @@
-name: Prepare release artifacts (no publication)
-on: workflow_dispatch
+name: Release
+on:
+  push:
+    tags: ["v*"]
+  pull_request:
+    paths:
+      - .github/workflows/release.yml
+      - CMakeLists.txt
+      - src/**
+      - resources/**
+      - packaging/**
+      - tests/**
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  package:
+  build:
+    # Build on the OLDEST platform to support: library requirements come from the build machine.
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y ninja-build qt6-base-dev
-      - run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-      - run: cmake --build build --parallel 2
-      - run: ctest --test-dir build --output-on-failure
-      - run: cpack --config build/CPackConfig.cmake
+      - name: Tag must match the package version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          version=$(sed -nE 's/^project\(StrataEditor VERSION ([0-9]+\.[0-9]+\.[0-9]+) .*/\1/p' CMakeLists.txt)
+          if [ "$GITHUB_REF_NAME" != "v$version" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match project version $version" >&2
+            exit 1
+          fi
+      - name: Install build dependencies
+        run: sudo apt-get update && sudo apt-get install -y build-essential cmake ninja-build qt6-base-dev desktop-file-utils
+      - name: Build the package
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --parallel 2
+          ctest --test-dir build --output-on-failure
+          cpack --config build/CPackConfig.cmake -G DEB -B dist
+      - name: Installs, verifies and removes cleanly
+        run: |
+          deb=$(ls dist/*.deb)
+          pkg=$(dpkg-deb -f "$deb" Package)
+          sudo apt-get install -y "./$deb"
+          sudo dpkg --verify "$pkg"
+          test "$(QT_QPA_PLATFORM=offscreen strata-editor --version)" = "strata-editor $(dpkg-deb -f "$deb" Version)"
+          desktop-file-validate /usr/share/applications/strata-editor.desktop
+          timeout 15s env QT_QPA_PLATFORM=offscreen strata-editor --smoke-test
+          sudo apt-get remove -y "$pkg"
+      - name: Checksums
+        working-directory: dist
+        run: sha256sum -- *.deb | tee SHA256SUMS
       - uses: actions/upload-artifact@v4
         with:
-          name: release-candidates
+          name: deb
           path: |
-            *.deb
-            *.tar.gz
+            dist/*.deb
+            dist/SHA256SUMS
+  publish:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: deb
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          deb=$(ls ./*.deb)
+          cat >notes.md <<EOF
+          ## Install
+
+          \`\`\`bash
+          sudo apt install $deb
+          \`\`\`
+
+          Verify the download with \`sha256sum -c SHA256SUMS\`.
+          EOF
+          gh release create "$GITHUB_REF_NAME" "$deb" SHA256SUMS \
+            --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "${GITHUB_REPOSITORY#*/} ${GITHUB_REF_NAME#v}" \
+            --notes-file notes.md --generate-notes
