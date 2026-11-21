@@ -22,3 +22,12 @@ Jev Review was attempted but returned `JEV_API_KEY is not set`; no scalar scores
 ## Coverage limits
 
 Windows CI is authored but unexecuted here. Neither Wayland nor physical printing, accessibility technology, installed-system package lifecycle, AppImage/installer delivery, or a CommonMark conformance corpus was verified. CMake reports missing CUPS development libraries; PDF generation passes, but physical printing needs platform validation. LSP/Tree-sitter/embedded terminal/multicursor/folding/spellcheck and streaming large files are not implemented. Recovery over 64 MiB total fails visibly and retains the previous snapshot. U+2029 source files are refused rather than silently normalized. Large synchronous layout/save/serialization and regex operations remain bounded by the document cap, but need further responsiveness work before production release.
+
+
+## Roadmap milestone: configurable shortcuts
+
+Implemented on `feat/shortcut-customization`: command shortcut editor, key recording, draft clear/reset, duplicate/prefix conflict detection, versioned portable JSON import/export, and QSettings persistence. Defaults and stable command IDs remain shared with QAction menus/toolbars/palette. The previously ambiguous Print/Quick Open Ctrl+P default is resolved: Print is Ctrl+Alt+P.
+
+Evidence: the new shortcut test target first failed because the configuration module did not exist. Integration then exposed the existing Ctrl+P default conflict. Regressions for empty-selection clipboard retention and rich HTML copy were observed failing before the handlers were corrected. A bounded read-only review covered the new module, UI and editor-event routing. Jev Review again returned `JEV_API_KEY is not set`; no scalar review score is claimed.
+
+Final validation: Debug and Release builds succeeded without source warnings. Both CTest executables pass in both configurations: 23 shortcut cases plus 29 baseline cases, 52 total including data rows/lifecycle cases. Release smoke launch passed. clang-format dry-run and git diff --check passed. Xvfb captures were inspected at the default size and 640×420 logical pixels; controls remain usable. Screenshot: docs/shortcuts.png. Tests use temporary settings and data directories; they do not change the running editor’s preferences. Windows/native file-dialog behavior and OS global shortcut conflicts were not verified. Native text navigation/context-menu bindings are not globally remapped. The source and rich editors give assigned application shortcuts precedence; ordinary typing remains on the native path.

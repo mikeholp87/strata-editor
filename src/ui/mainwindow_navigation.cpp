@@ -5,6 +5,7 @@
 #include "gitpanel.h"
 #include "mainwindow.h"
 #include "projectsearch.h"
+#include "shortcutdialog.h"
 #include <QJsonArray>
 #include <QPrintDialog>
 #include <QPrintPreviewDialog>
@@ -138,4 +139,9 @@ void MainWindow::preferences() {
         settings.sync();
         configureViews();
     }
+}
+
+void MainWindow::editShortcuts() {
+    ShortcutDialog dialog(commands, settings, this);
+    dialog.exec();
 }

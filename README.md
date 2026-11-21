@@ -12,6 +12,7 @@ A native C++20 / Qt 6 editor for text, source code, Markdown and formatted HTML.
 - Dedicated visual HTML editor with undoable formatting, lists, links and tables
 - Project explorer, command palette, recent files/projects, recovery snapshots and workspace restoration
 - Dark/light themes, editor preferences, optional Git operations and external terminal
+- Searchable shortcut editor with recording, reset, conflict checks and portable JSON import/export
 
 No telemetry, accounts, cloud service, or Python/Node runtime. Git and the terminal are optional system tools.
 
@@ -35,6 +36,6 @@ Install with `cmake --install build --prefix ~/.local`. Create system-Qt Linux p
 
 ## Preview limitations
 
-Files above 8 MiB are refused until a large-file viewer exists. Syntax rules are lexical, not Tree-sitter. LSP, embedded terminal emulation, folding, multiple cursors, spellcheck, project replacement and shortcut customization are later milestones. Visual HTML uses Qt’s supported HTML subset and may normalize unsupported markup. This is not yet a complete Kate replacement. Windows CI is provided but has not been executed in this environment.
+Files above 8 MiB are refused until a large-file viewer exists. Syntax rules are lexical, not Tree-sitter. LSP, embedded terminal emulation, folding, multiple cursors, spellcheck, project replacement are later milestones. Visual HTML uses Qt’s supported HTML subset and may normalize unsupported markup. This is not yet a complete Kate replacement. Windows CI is provided but has not been executed in this environment.
 
 Original source is [MIT](LICENSE); dynamically linked dependencies retain their own [license terms](THIRD_PARTY.md).

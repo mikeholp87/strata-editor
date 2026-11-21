@@ -64,6 +64,7 @@ class MainWindow : public QMainWindow {
     bool canClose(DocumentView *view);
     void palette(bool quickOpen = false);
     void preferences();
+    void editShortcuts();
     void recoverySnapshot();
     void restoreSession();
     void reloadCurrent();

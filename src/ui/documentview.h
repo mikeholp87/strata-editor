@@ -15,6 +15,7 @@ class DocumentView : public QWidget {
     QTextEdit *rich = nullptr;
     QTextBrowser *preview = nullptr;
     CodeEditor *activeCode() const;
+    QTextEdit *activeRich() const;
     QTextCursor cursor() const;
     void setCursor(const QTextCursor &cursor);
     QJsonObject viewState() const;
@@ -24,6 +25,9 @@ class DocumentView : public QWidget {
     void configure(const QFont &font, bool wrap, int tabWidth, bool spaces, bool numbers);
   signals:
     void cursorChanged();
+
+  protected:
+    bool eventFilter(QObject *object, QEvent *event) override;
 
   private:
     QSplitter *panes;

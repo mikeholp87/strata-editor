@@ -13,3 +13,28 @@ Ctrl+Shift+F opens project search. Search is literal and case insensitive; Cance
 Configuration uses QSettings (StrataEditor/StrataEditor). Session/recovery JSON uses QStandardPaths AppDataLocation (normally ~/.local/share/StrataEditor/strata-editor on Linux; platform-specific paths on Windows). Snapshots contain unsaved text and are private local data. Every 15 seconds modified buffers are atomically snapshotted. Startup offers restore; declining saves the previous snapshot as recovery-backup.json. Clean close clears active recovery after explicit save/discard decisions. An interrupted save cannot bypass external-conflict checks. Recovery has one current and one declined backup generation; configurable retention is planned.
 
 A single application instance owns recovery/session storage. A second launch asks you to use the existing window. Recovery JSON is capped at 64 MiB total; a failed/oversized snapshot leaves the previous snapshot intact and shows a warning to save your documents.
+
+
+## Keyboard shortcuts
+
+Open **Tools → Keyboard shortcuts…**, or search for it in the command palette. Filter by command name, stable ID, or current shortcut; select a row and record a new key or chord. Use Ctrl, Alt, Meta, or function keys. Ordinary typing keys are reserved. Clear unbinds the application action, Reset selected restores one default, and Reset all restores the full default map. Save applies the whole draft; Cancel leaves active mappings and saved preferences unchanged.
+
+Duplicate shortcuts and chord-prefix conflicts disable Save and Export. To move an existing key, first clear or change its previous command. Recording supports up to four combinations. Print defaults to **Ctrl+Alt+P**, while Quick Open retains **Ctrl+P**.
+
+Import reads a version-1 JSON configuration into the draft; it does not apply automatically. Export draft saves the draft without applying it. Omitted command IDs reset to their defaults; an empty string unbinds an action. Unknown commands, unsupported versions, malformed/noncanonical key strings, and files over 256 KiB are rejected without replacing the draft. Use an exported file as a starting point. Example:
+
+```json
+{
+  "format": "strata-shortcuts",
+  "version": 1,
+  "bindings": {
+    "new": "Ctrl+Alt+N",
+    "newMarkdown": "Ctrl+K, Ctrl+M",
+    "duplicate": ""
+  }
+}
+```
+
+Mappings persist in QSettings under `shortcuts/v1`. Stable IDs remain independent of translated labels. Menus, toolbar actions and the command palette share the updated actions. Source and rich-text editors allow those registered keys to take precedence over native editing shortcuts. Unassigned native text navigation and the widgets’ native context-menu bindings retain platform behavior; clearing an application binding does not disable every equivalent Qt text-widget key. OS global shortcuts and menu mnemonics are outside this editor’s conflict check.
+
+![Keyboard shortcut editor](shortcuts.png)

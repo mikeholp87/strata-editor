@@ -7,11 +7,11 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 find_package(Qt6 6.4 REQUIRED COMPONENTS Widgets Concurrent PrintSupport Test)
 add_library(strata STATIC
- src/core/document.cpp src/core/persistence.cpp src/core/export.cpp
+ src/core/document.cpp src/core/persistence.cpp src/core/export.cpp src/core/shortcuts.cpp
  src/editor/codeeditor.cpp src/editor/highlighter.cpp
  src/ui/documentview.cpp src/ui/mainwindow.cpp src/ui/projectsearch.cpp src/ui/gitpanel.cpp
  src/ui/mainwindow_commands.cpp src/ui/mainwindow_writing.cpp
- src/ui/mainwindow_session.cpp src/ui/mainwindow_navigation.cpp)
+ src/ui/mainwindow_session.cpp src/ui/mainwindow_navigation.cpp src/ui/shortcutdialog.cpp)
 target_include_directories(strata PUBLIC src)
 target_compile_definitions(strata PUBLIC STRATA_PRODUCT_NAME="${STRATA_PRODUCT_NAME}")
 target_link_libraries(strata PUBLIC Qt6::Widgets Qt6::Concurrent Qt6::PrintSupport)
@@ -31,6 +31,10 @@ include(CTest)
 if(BUILD_TESTING)
  add_executable(strata-tests tests/test_strata.cpp)
  target_link_libraries(strata-tests PRIVATE strata Qt6::Test)
+ add_executable(strata-shortcut-tests tests/test_shortcuts.cpp)
+ target_link_libraries(strata-shortcut-tests PRIVATE strata Qt6::Test)
+ add_test(NAME strata-shortcuts COMMAND strata-shortcut-tests)
+ set_tests_properties(strata-shortcuts PROPERTIES TIMEOUT 30 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
  add_test(NAME strata-behavior COMMAND strata-tests)
  set_tests_properties(strata-behavior PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 endif()

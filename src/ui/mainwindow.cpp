@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "core/persistence.h"
+#include "core/shortcuts.h"
 #include "documentview.h"
 #include "editor/codeeditor.h"
 #include "editor/highlighter.h"
@@ -105,6 +106,13 @@ MainWindow::MainWindow(bool restore) : settings("StrataEditor", "StrataEditor") 
     recent = settings.value("recentFiles").toStringList();
     buildCommands();
     buildFormatBar();
+    QString shortcutError;
+    if (!Shortcuts::load(settings, commands, &shortcutError)) {
+        QTimer::singleShot(0, this, [this, shortcutError] {
+            QMessageBox::warning(this, tr("Shortcut settings"),
+                                 tr("Default shortcuts are active. %1").arg(shortcutError));
+        });
+    }
     updateTheme();
     connect(tabs, &QTabWidget::tabCloseRequested, this, &MainWindow::closeTab);
     connect(tabs, &QTabWidget::currentChanged, this, &MainWindow::updateUi);
@@ -143,6 +151,7 @@ QAction *MainWindow::command(const QString &id, const QString &title, const QKey
     auto a = new QAction(title, this);
     a->setObjectName(id);
     a->setShortcut(key);
+    a->setProperty("defaultShortcut", QVariant::fromValue(key));
     connect(a, &QAction::triggered, this, fn);
     addAction(a);
     commands.append(a);
@@ -326,6 +335,9 @@ void MainWindow::updateUi() {
     auto v = current();
     if (formatBar)
         formatBar->setVisible(v && v->rich);
+    for (auto action : commands)
+        if (action->objectName().startsWith("format"))
+            action->setEnabled(v && v->rich);
     if (!v)
         return;
     auto c = v->cursor();

@@ -17,8 +17,8 @@ void MainWindow::buildFormatBar() {
     formatBar = addToolBar(tr("Rich-text formatting"));
     formatBar->setObjectName("formatBar");
     formatBar->setMovable(false);
-    auto format = [this](QString name, QKeySequence key, auto fn) {
-        auto a = command("format" + name, name, key, [this, fn] {
+    auto format = [this](QString id, QString name, QKeySequence key, auto fn) {
+        auto a = command(id, name, key, [this, fn] {
             if (!current() || !current()->rich)
                 return;
             auto c = current()->cursor();
@@ -29,22 +29,22 @@ void MainWindow::buildFormatBar() {
         });
         formatBar->addAction(a);
     };
-    format(tr("Bold"), QKeySequence("Ctrl+B"), [](QTextCursor &c) {
+    format("formatBold", tr("Bold"), QKeySequence("Ctrl+B"), [](QTextCursor &c) {
         auto f = c.charFormat();
         f.setFontWeight(f.fontWeight() == QFont::Bold ? QFont::Normal : QFont::Bold);
         c.mergeCharFormat(f);
     });
-    format(tr("Italic"), QKeySequence("Ctrl+I"), [](QTextCursor &c) {
+    format("formatItalic", tr("Italic"), QKeySequence("Ctrl+I"), [](QTextCursor &c) {
         QTextCharFormat f;
         f.setFontItalic(!c.charFormat().fontItalic());
         c.mergeCharFormat(f);
     });
-    format(tr("Underline"), QKeySequence("Ctrl+U"), [](QTextCursor &c) {
+    format("formatUnderline", tr("Underline"), QKeySequence("Ctrl+U"), [](QTextCursor &c) {
         QTextCharFormat f;
         f.setFontUnderline(!c.charFormat().fontUnderline());
         c.mergeCharFormat(f);
     });
-    format(tr("Strike"), {}, [](QTextCursor &c) {
+    format("formatStrike", tr("Strike"), {}, [](QTextCursor &c) {
         QTextCharFormat f;
         f.setFontStrikeOut(!c.charFormat().fontStrikeOut());
         c.mergeCharFormat(f);
@@ -92,7 +92,7 @@ void MainWindow::buildFormatBar() {
         c.mergeCharFormat(f);
         current()->setCursor(c);
     });
-    format(tr("Color"), {}, [this](QTextCursor &c) {
+    format("formatColor", tr("Color"), {}, [this](QTextCursor &c) {
         auto color = QColorDialog::getColor(Qt::white, this);
         if (color.isValid()) {
             QTextCharFormat f;
@@ -100,7 +100,7 @@ void MainWindow::buildFormatBar() {
             c.mergeCharFormat(f);
         }
     });
-    format(tr("Highlight"), {}, [this](QTextCursor &c) {
+    format("formatHighlight", tr("Highlight"), {}, [this](QTextCursor &c) {
         auto color = QColorDialog::getColor(Qt::yellow, this);
         if (color.isValid()) {
             QTextCharFormat f;
@@ -108,12 +108,12 @@ void MainWindow::buildFormatBar() {
             c.mergeCharFormat(f);
         }
     });
-    format(tr("Bullets"), {}, [](QTextCursor &c) {
+    format("formatBullets", tr("Bullets"), {}, [](QTextCursor &c) {
         QTextListFormat f;
         f.setStyle(QTextListFormat::ListDisc);
         c.createList(f);
     });
-    format(tr("Numbers"), {}, [](QTextCursor &c) {
+    format("formatNumbers", tr("Numbers"), {}, [](QTextCursor &c) {
         QTextListFormat f;
         f.setStyle(QTextListFormat::ListDecimal);
         c.createList(f);
@@ -121,12 +121,12 @@ void MainWindow::buildFormatBar() {
     for (auto pair :
          {qMakePair(QString("Left"), Qt::AlignLeft), qMakePair(QString("Center"), Qt::AlignHCenter),
           qMakePair(QString("Right"), Qt::AlignRight)})
-        format(pair.first, {}, [pair](QTextCursor &c) {
+        format("format" + pair.first, pair.first, {}, [pair](QTextCursor &c) {
             auto f = c.blockFormat();
             f.setAlignment(pair.second);
             c.setBlockFormat(f);
         });
-    format(tr("Link"), {}, [this](QTextCursor &c) {
+    format("formatLink", tr("Link"), {}, [this](QTextCursor &c) {
         bool ok;
         auto link = QInputDialog::getText(this, tr("Insert link"), tr("https:// URL"), QLineEdit::Normal,
                                           "https://", &ok);
@@ -141,8 +141,8 @@ void MainWindow::buildFormatBar() {
         else
             c.insertText(link, f);
     });
-    format(tr("Rule"), {}, [](QTextCursor &c) { c.insertHtml("<hr>"); });
-    format(tr("Table"), {}, [](QTextCursor &c) { c.insertTable(3, 3); });
+    format("formatRule", tr("Rule"), {}, [](QTextCursor &c) { c.insertHtml("<hr>"); });
+    format("formatTable", tr("Table"), {}, [](QTextCursor &c) { c.insertTable(3, 3); });
 }
 void MainWindow::findNext(bool backwards) {
     auto v = current();

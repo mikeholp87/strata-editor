@@ -74,7 +74,7 @@ void MainWindow::buildCommands() {
         },
         file);
     command(
-        "print", tr("Print…"), QKeySequence::Print,
+        "print", tr("Print…"), QKeySequence("Ctrl+Alt+P"),
         [this] {
             if (!current())
                 return;
@@ -114,11 +114,23 @@ void MainWindow::buildCommands() {
     cursorAction("redo", tr("Redo"), QKeySequence("Ctrl+Shift+Z"),
                  [](DocumentView *v) { v->model->text()->redo(); });
     cursorAction("cut", tr("Cut"), QKeySequence::Cut, [](DocumentView *v) {
+        if (v->rich) {
+            v->activeRich()->cut();
+            return;
+        }
         auto c = v->cursor();
+        if (!c.hasSelection())
+            return;
         QApplication::clipboard()->setText(c.selectedText().replace(QChar::ParagraphSeparator, '\n'));
         c.removeSelectedText();
     });
     cursorAction("copy", tr("Copy"), QKeySequence::Copy, [](DocumentView *v) {
+        if (v->rich) {
+            v->activeRich()->copy();
+            return;
+        }
+        if (!v->cursor().hasSelection())
+            return;
         QApplication::clipboard()->setText(
             v->cursor().selectedText().replace(QChar::ParagraphSeparator, '\n'));
     });
@@ -350,6 +362,7 @@ void MainWindow::buildCommands() {
 #endif
         },
         tools);
+    command("shortcuts", tr("Keyboard shortcuts…"), {}, [this] { editShortcuts(); }, tools);
     command("settings", tr("Preferences…"), QKeySequence("Ctrl+,"), [this] { preferences(); }, tools);
     command(
         "about", tr("About"), {},
