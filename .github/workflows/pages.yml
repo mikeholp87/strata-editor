@@ -9,6 +9,10 @@ on:
       - docs/screenshot-light.png
       - docs/strata-editor.svg
       - .github/workflows/pages.yml
+      - scripts/stamp-site.sh
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
   workflow_dispatch:
 permissions:
   contents: read
@@ -17,6 +21,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   build:
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -25,6 +30,10 @@ jobs:
         run: |
           mkdir -p _site
           cp docs/index.html docs/site.css docs/screenshot.png docs/screenshot-light.png docs/strata-editor.svg _site/
+      - name: Stamp version and release date
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/stamp-site.sh _site/index.html
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
