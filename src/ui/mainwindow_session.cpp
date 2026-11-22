@@ -1,4 +1,5 @@
 #include "core/persistence.h"
+#include "core/recovery.h"
 #include "documentview.h"
 #include "editor/codeeditor.h"
 #include "editor/highlighter.h"
@@ -13,16 +14,17 @@
 #include <QtWidgets>
 
 void MainWindow::recoverySnapshot() {
-    if (!settings.value("recovery", true).toBool())
+    if (preserveRecovery || recoveryBlocked || !settings.value("recovery", true).toBool())
         return;
     QJsonArray buffers;
     for (int i = 0; i < tabs->count(); ++i) {
         auto d = qobject_cast<DocumentView *>(tabs->widget(i))->model;
-        if (d->text()->isModified())
+        if (d->isModified())
             buffers.append(d->snapshot());
     }
-    if (!Persistence::write(Persistence::dataPath("recovery.json"), {{"buffers", buffers}}))
-        statusBar()->showMessage(tr("Could not write recovery snapshot. Save your documents."), 10000);
+    QString error;
+    if (!Recovery::save(Persistence::dataPath("recovery.json"), {{"buffers", buffers}}, &error))
+        statusBar()->showMessage(tr("Recovery snapshot failed: %1. Save your documents.").arg(error), 10000);
 }
 void MainWindow::saveSession() {
     QJsonArray documents;
@@ -31,16 +33,42 @@ void MainWindow::saveSession() {
         if (!v->model->path().isEmpty())
             documents.append(QJsonObject{{"path", v->model->path()}, {"view", v->viewState()}});
     }
-    Persistence::write(Persistence::dataPath("session.json"),
+    QString error;
+    const bool saved = preserveRecovery || Persistence::write(Persistence::dataPath("session.json"),
                        {{"documents", documents},
                         {"active", current() ? current()->model->path() : ""},
-                        {"project", project}});
+                        {"project", project}}, &error);
     settings.setValue("geometry", saveGeometry());
-    settings.setValue("layout", saveState());
+    settings.setValue("layout", focusMode ? focusLayout : saveState());
     settings.sync();
+    if (!saved || settings.status() != QSettings::NoError)
+        QMessageBox::warning(this, tr("Workspace save failed"),
+                             tr("The workspace or window settings could not be saved. %1").arg(error));
 }
 void MainWindow::restoreSession() {
-    auto recovery = Persistence::read(Persistence::dataPath("recovery.json"))["buffers"].toArray();
+    const auto recoveryPath = Persistence::dataPath("recovery.json");
+    auto result = Recovery::load(recoveryPath);
+    if (!result.error.isEmpty()) {
+        QString error;
+        const auto preserved = Recovery::preserveInvalid(recoveryPath, &error);
+        recoveryBlocked = preserved.isEmpty();
+        QMessageBox::warning(this, tr("Recovery data could not be read"),
+                             result.error + "\n" +
+                                 (recoveryBlocked ? tr("The original was left untouched. Recovery snapshots "
+                                                       "are disabled for this session: %1")
+                                                        .arg(error)
+                                                  : tr("The original was preserved at %1").arg(preserved)));
+    }
+    if (result.missing || !result.error.isEmpty()) {
+        for (const auto &path : Recovery::backupPaths(recoveryPath)) {
+            const auto backup = Recovery::load(path);
+            if (backup.error.isEmpty() && !backup.value["buffers"].toArray().isEmpty()) {
+                result.value = backup.value;
+                break;
+            }
+        }
+    }
+    auto recovery = result.value["buffers"].toArray();
     QSet<QString> recovered;
     if (!recovery.isEmpty()) {
         auto answer = QMessageBox::question(this, tr("Recover documents"),
@@ -70,7 +98,10 @@ void MainWindow::restoreSession() {
     }
     if (!settings.value("restore", true).toBool())
         return;
-    auto session = Persistence::read(Persistence::dataPath("session.json"));
+    const auto storedSession = Persistence::readChecked(Persistence::dataPath("session.json"));
+    if (!storedSession.error.isEmpty())
+        QMessageBox::warning(this, tr("Session could not be restored"), storedSession.error);
+    const auto session = storedSession.value;
     setProject(session["project"].toString());
 
     pendingActive = session["active"].toString();

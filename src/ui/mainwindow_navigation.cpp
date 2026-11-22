@@ -21,7 +21,7 @@ void MainWindow::setProject(const QString &p) {
     files->setRootPath(project);
     tree->setRootIndex(files->index(project));
     explorerDock->setWindowTitle(QFileInfo(project).fileName());
-    projectSearch->root = project;
+    projectSearch->setRoot(project);
     git->root = project;
     auto projects = settings.value("recentProjects").toStringList();
     projects.removeAll(project);
@@ -106,8 +106,13 @@ void MainWindow::preferences() {
     auto font = new QFontComboBox;
     font->setCurrentFont(QFont(settings.value("font", "monospace").toString()));
     auto size = new QSpinBox;
+    size->setObjectName("editorFontSize");
     size->setRange(7, 48);
     size->setValue(settings.value("fontSize", 12).toInt());
+    auto sidebarSize = new QSpinBox;
+    sidebarSize->setObjectName("sidebarFontSize");
+    sidebarSize->setRange(7, 48);
+    sidebarSize->setValue(tree->font().pointSize());
     auto width = new QSpinBox;
     width->setRange(1, 16);
     width->setValue(settings.value("tabWidth", 4).toInt());
@@ -120,7 +125,8 @@ void MainWindow::preferences() {
     auto recovery = new QCheckBox;
     recovery->setChecked(settings.value("recovery", true).toBool());
     l->addRow(tr("Editor font"), font);
-    l->addRow(tr("Font size"), size);
+    l->addRow(tr("Editor font size"), size);
+    l->addRow(tr("Project sidebar font size"), sidebarSize);
     l->addRow(tr("Tab width"), width);
     l->addRow(tr("Insert spaces"), spaces);
     l->addRow(tr("Line numbers"), numbers);
@@ -134,6 +140,7 @@ void MainWindow::preferences() {
     if (d.exec() == QDialog::Accepted) {
         settings.setValue("font", font->currentFont().family());
         settings.setValue("fontSize", size->value());
+        settings.setValue("sidebarFontSize", sidebarSize->value());
         settings.setValue("tabWidth", width->value());
         settings.setValue("spaces", spaces->isChecked());
         settings.setValue("lineNumbers", numbers->isChecked());

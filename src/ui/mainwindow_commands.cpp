@@ -51,7 +51,7 @@ void MainWindow::buildCommands() {
             int active = tabs->currentIndex();
             for (int i = 0; i < tabs->count(); ++i) {
                 tabs->setCurrentIndex(i);
-                if (current()->model->text()->isModified() && !saveCurrent())
+                if (current()->model->isModified() && !saveCurrent())
                     break;
             }
             tabs->setCurrentIndex(active);
@@ -63,8 +63,9 @@ void MainWindow::buildCommands() {
     command(
         "closeAll", tr("Close all documents"), {},
         [this] {
-            while (tabs->count() && closeTab(tabs->count() - 1)) {
-            }
+            for (int i = tabs->count() - 1; i >= 0; --i)
+                if (!closeTab(i))
+                    break;
         },
         file);
     command(
@@ -79,10 +80,14 @@ void MainWindow::buildCommands() {
         [this] {
             if (!current())
                 return;
+            QPointer<Document> document = current()->model;
+            SafeDocument rendered;
+            if (document->mode() == Document::Mode::Markdown)
+                rendered.setMarkdown(document->sourceText(), QTextDocument::MarkdownFeatures(QTextDocument::MarkdownDialectGitHub) | QTextDocument::MarkdownNoHTML);
             QPrinter p;
             QPrintDialog dialog(&p, this);
-            if (dialog.exec() == QDialog::Accepted)
-                current()->model->text()->print(&p);
+            if (dialog.exec() == QDialog::Accepted && document)
+                (document->mode() == Document::Mode::Markdown ? &rendered : document->text())->print(&p);
         },
         file);
     command(
@@ -90,11 +95,15 @@ void MainWindow::buildCommands() {
         [this] {
             if (!current())
                 return;
+            QPointer<Document> document = current()->model;
+            SafeDocument rendered;
+            if (document->mode() == Document::Mode::Markdown)
+                rendered.setMarkdown(document->sourceText(), QTextDocument::MarkdownFeatures(QTextDocument::MarkdownDialectGitHub) | QTextDocument::MarkdownNoHTML);
             QPrinter p;
             QPrintPreviewDialog dialog(&p, this);
-            connect(&dialog, &QPrintPreviewDialog::paintRequested, this, [this](QPrinter *printer) {
-                if (current())
-                    current()->model->text()->print(printer);
+            connect(&dialog, &QPrintPreviewDialog::paintRequested, this, [document, &rendered](QPrinter *printer) {
+                if (document)
+                    (document->mode() == Document::Mode::Markdown ? &rendered : document->text())->print(printer);
             });
             dialog.exec();
         },
@@ -107,6 +116,8 @@ void MainWindow::buildCommands() {
             id, title, key,
             [this, fn, id] {
                 if (auto v = current()) {
+                    if (v->isReadOnly() && id != "copy" && id != "selectAll")
+                        return;
                     if (v->preview && v->markdownView() == DocumentView::MarkdownView::Preview &&
                         id != "copy" && id != "selectAll")
                         v->setMarkdownView(DocumentView::MarkdownView::Split);
@@ -247,7 +258,7 @@ void MainWindow::buildCommands() {
         command(
             "newline" + e, tr("Use %1 line endings").arg(e), {},
             [this, e] {
-                if (current())
+                if (current() && !current()->isReadOnly())
                     current()->model->setNewline(e);
             },
             edit);
@@ -283,15 +294,7 @@ void MainWindow::buildCommands() {
         [this] {
             if (!current())
                 return;
-            auto v = current();
-            auto codes = v->findChildren<CodeEditor *>();
-            for (auto e : codes)
-                if (e != v->code)
-                    delete e;
-            auto riches = v->findChildren<QTextEdit *>();
-            for (auto e : riches)
-                if (e != v->rich && e != static_cast<QTextEdit *>(v->preview))
-                    delete e;
+            current()->closeExtraSplits();
         },
         view);
     command(
@@ -317,17 +320,57 @@ void MainWindow::buildCommands() {
             updateTheme();
         },
         view);
-    command(
+    for (const int direction : {1, -1})
+        command(direction > 0 ? "fontIncrease" : "fontDecrease",
+                direction > 0 ? tr("Increase font size") : tr("Decrease font size"),
+                direction > 0 ? QKeySequence(QKeySequence::ZoomIn) : QKeySequence(QKeySequence::ZoomOut),
+                [this, direction] {
+                    const bool sidebar =
+                        tree->hasFocus() || tree->isAncestorOf(QApplication::focusWidget());
+                    const auto key = sidebar ? "sidebarFontSize" : "fontSize";
+                    const int size = sidebar ? tree->font().pointSize() : settings.value(key, 12).toInt();
+                    settings.setValue(key, qBound(7, size + direction, 48));
+                    settings.sync();
+                    configureViews();
+                }, view);
+    auto focusAction = command(
         "focus", tr("Focus mode"), QKeySequence("F11"),
         [this] {
-            bool focus = !menuBar()->isVisible();
-            menuBar()->setVisible(focus);
-            statusBar()->setVisible(focus);
-            explorerDock->setVisible(focus);
-            for (auto t : findChildren<QToolBar *>())
-                t->setVisible(focus && (t != formatBar || (current() && current()->rich)));
-        },
-        view);
+            if (!focusMode) {
+                focusLayout = saveState();
+                focusMode = true;
+                menuBar()->hide();
+                statusBar()->hide();
+                for (auto dock : findChildren<QDockWidget *>())
+                    dock->hide();
+                for (auto bar : findChildren<QToolBar *>())
+                    bar->hide();
+                focusExitBar->show();
+            } else {
+                focusMode = false;
+                restoreState(focusLayout);
+                menuBar()->show();
+                statusBar()->show();
+                focusExitBar->hide();
+                updateUi();
+            }
+        }, view);
+    focusAction->setCheckable(true);
+    focusExitBar = addToolBar(tr("Focus controls"));
+    focusExitBar->setObjectName("focusExitBar");
+    focusExitBar->setMovable(false);
+    auto exitFocus = new QToolButton;
+    exitFocus->setObjectName("exitFocusMode");
+    const auto updateExitLabel = [exitFocus, focusAction] {
+        const auto shortcut = focusAction->shortcut().toString(QKeySequence::NativeText);
+        exitFocus->setText(shortcut.isEmpty() ? tr("Exit focus mode")
+                                             : tr("Exit focus mode (%1)").arg(shortcut));
+    };
+    connect(focusAction, &QAction::changed, exitFocus, updateExitLabel);
+    updateExitLabel();
+    connect(exitFocus, &QToolButton::clicked, focusAction, &QAction::trigger);
+    focusExitBar->addWidget(exitFocus);
+    focusExitBar->hide();
     view->addAction(explorerDock->toggleViewAction());
     view->addAction(searchDock->toggleViewAction());
     view->addAction(gitDock->toggleViewAction());

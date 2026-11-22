@@ -19,7 +19,7 @@ void MainWindow::buildFormatBar() {
     formatBar->setMovable(false);
     auto format = [this](QString id, QString name, QKeySequence key, auto fn) {
         auto a = command(id, name, key, [this, fn] {
-            if (!current() || !current()->rich)
+            if (!current() || !current()->rich || current()->isReadOnly())
                 return;
             auto c = current()->cursor();
             c.beginEditBlock();
@@ -53,7 +53,7 @@ void MainWindow::buildFormatBar() {
     styles->addItems({tr("Paragraph"), tr("Heading 1"), tr("Heading 2"), tr("Heading 3")});
     formatBar->addWidget(styles);
     connect(styles, qOverload<int>(&QComboBox::activated), this, [this](int index) {
-        if (!current() || !current()->rich)
+        if (!current() || !current()->rich || current()->isReadOnly())
             return;
         auto c = current()->cursor();
         c.beginEditBlock();
@@ -71,7 +71,7 @@ void MainWindow::buildFormatBar() {
     fonts->setMaximumWidth(160);
     formatBar->addWidget(fonts);
     connect(fonts, &QFontComboBox::currentFontChanged, this, [this](QFont font) {
-        if (!current() || !current()->rich)
+        if (!current() || !current()->rich || current()->isReadOnly())
             return;
         auto c = current()->cursor();
         QTextCharFormat f;
@@ -84,7 +84,7 @@ void MainWindow::buildFormatBar() {
     size->setValue(12);
     formatBar->addWidget(size);
     connect(size, qOverload<int>(&QSpinBox::valueChanged), this, [this](int n) {
-        if (!current() || !current()->rich)
+        if (!current() || !current()->rich || current()->isReadOnly())
             return;
         auto c = current()->cursor();
         QTextCharFormat f;
@@ -180,7 +180,7 @@ void MainWindow::findNext(bool backwards) {
 }
 void MainWindow::replace(bool all) {
     auto v = current();
-    if (!v || findText->text().isEmpty())
+    if (!v || v->isReadOnly() || findText->text().isEmpty())
         return;
     if (v->preview && v->markdownView() == DocumentView::MarkdownView::Preview)
         v->setMarkdownView(DocumentView::MarkdownView::Split);
@@ -196,6 +196,16 @@ void MainWindow::replace(bool all) {
                 : c.selectedText().compare(findText->text(), matchCase->isChecked()
                                                                  ? Qt::CaseSensitive
                                                                  : Qt::CaseInsensitive) == 0;
+        if (matches && wholeWord->isChecked()) {
+            QTextCursor start(v->model->text());
+            start.setPosition(c.selectionStart());
+            QTextDocument::FindFlags wordFlags = QTextDocument::FindWholeWords;
+            if (matchCase->isChecked()) wordFlags |= QTextDocument::FindCaseSensitively;
+            QRegularExpression expression(regex->isChecked() ? findText->text() : QRegularExpression::escape(findText->text()),
+                matchCase->isChecked() ? QRegularExpression::NoPatternOption : QRegularExpression::CaseInsensitiveOption);
+            const auto hit = v->model->text()->find(expression, start, wordFlags);
+            matches = !hit.isNull() && hit.selectionStart() == c.selectionStart() && hit.selectionEnd() == c.selectionEnd();
+        }
         if (c.hasSelection() && matches) {
             c.insertText(replaceText->text());
             v->setCursor(c);
@@ -238,8 +248,9 @@ void MainWindow::replace(bool all) {
 void MainWindow::exportPdf() {
     if (!current())
         return;
+    QPointer<Document> document = current()->model;
     auto path = QFileDialog::getSaveFileName(this, tr("Export PDF"), {}, tr("PDF (*.pdf)"));
-    if (path.isEmpty())
+    if (path.isEmpty() || !document)
         return;
     QString error;
     for (int i = 0; i < tabs->count(); ++i) {
@@ -249,14 +260,15 @@ void MainWindow::exportPdf() {
             return;
         }
     }
-    if (!writeExport(*current()->model, path, true, &error))
+    if (!writeExport(*document, path, true, &error))
         QMessageBox::warning(this, tr("Export failed"), error);
 }
 void MainWindow::exportHtml() {
     if (!current())
         return;
+    QPointer<Document> document = current()->model;
     auto path = QFileDialog::getSaveFileName(this, tr("Export HTML"), {}, tr("HTML (*.html)"));
-    if (path.isEmpty())
+    if (path.isEmpty() || !document)
         return;
     QString error;
     for (int i = 0; i < tabs->count(); ++i) {
@@ -266,6 +278,6 @@ void MainWindow::exportHtml() {
             return;
         }
     }
-    if (!writeExport(*current()->model, path, false, &error))
+    if (!writeExport(*document, path, false, &error))
         QMessageBox::warning(this, tr("Export failed"), error);
 }

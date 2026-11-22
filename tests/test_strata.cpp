@@ -17,6 +17,7 @@
 #include <QTextLayout>
 #include <QToolButton>
 #include <cmath>
+#include <algorithm>
 #include <QJsonArray>
 #include <QLineEdit>
 #include <QMessageBox>
@@ -24,6 +25,7 @@
 #include <QProcess>
 #include <QSettings>
 #include <QTabWidget>
+#include <QTabBar>
 #include <QTemporaryDir>
 #include <QTextBrowser>
 #include <QTimer>
@@ -221,6 +223,69 @@ class StrataTests : public QObject {
         QCOMPARE(tabs->count(), count);
         QCOMPARE(w.current()->code->toPlainText(), QString("keep me"));
         w.current()->model->text()->setModified(false);
+    }
+    void documentTabsOverflowAndClose() {
+        for (auto theme : {QString("dark"), QString("light"), QString("hover")}) {
+            QImage icon(":/strata/tab-close-" + theme + ".png");
+            QVERIFY(!icon.isNull());
+            QCOMPARE(icon.pixelColor(0, 0).alpha(), 0);
+            QVERIFY(icon.pixelColor(icon.width() / 2, icon.height() / 2).alpha() > 0);
+        }
+        QTemporaryDir dir;
+        MainWindow window(false);
+        window.resize(640, 420);
+        window.showNormal();
+        auto tabs = window.findChild<QTabWidget *>("documentTabs");
+        auto bar = tabs->tabBar();
+        QPointer<DocumentView> edited;
+        QString editedTitle;
+        for (int i = 0; i < 6; ++i) {
+            auto title = QString("project-document-with-a-long-descriptive-name-%1.cpp").arg(i);
+            auto path = dir.filePath(title);
+            QFile file(path);
+            QVERIFY(file.open(QIODevice::WriteOnly));
+            file.close();
+            window.openFile(path);
+            QTRY_COMPARE(window.current()->model->path(), QFileInfo(path).canonicalFilePath());
+            if (!i) {
+                edited = window.current();
+                editedTitle = title;
+            }
+        }
+        QCOMPARE(window.width(), 640);
+        auto arrows = bar->findChildren<QToolButton *>();
+        QVERIFY(std::any_of(arrows.begin(), arrows.end(), [](auto b) { return b->isVisible(); }));
+        bar->setFocus();
+        QTRY_VERIFY(bar->hasFocus());
+        int previous = tabs->currentIndex();
+        QTest::keyClick(bar, Qt::Key_Left);
+        QCOMPARE(tabs->currentIndex(), previous - 1);
+        edited->code->insertPlainText("keep these edits");
+        int index = tabs->indexOf(edited);
+        QVERIFY(bar->accessibleTabName(index).contains("unsaved changes"));
+        QCOMPARE(bar->tabToolTip(index), edited->model->path());
+        bar->moveTab(index, 3);
+        QCOMPARE(tabs->indexOf(edited), 3);
+        tabs->setCurrentWidget(edited);
+        auto close = qobject_cast<QAbstractButton *>(bar->tabButton(3, QTabBar::RightSide));
+        if (!close)
+            close = qobject_cast<QAbstractButton *>(bar->tabButton(3, QTabBar::LeftSide));
+        QVERIFY(close);
+        QCOMPARE(close->accessibleName(), "Close " + editedTitle);
+        int count = tabs->count();
+        QTimer::singleShot(0, &window, [] {
+            for (auto widget : QApplication::topLevelWidgets())
+                if (auto box = qobject_cast<QMessageBox *>(widget))
+                    box->button(QMessageBox::Cancel)->click();
+        });
+        QTest::mouseClick(close, Qt::LeftButton);
+        QCOMPARE(tabs->count(), count);
+        QCOMPARE(edited->model->sourceText(), QString("keep these edits"));
+        edited->model->text()->setModified(false);
+        QCOMPARE(bar->accessibleTabName(3), editedTitle);
+        QTest::mouseClick(close, Qt::LeftButton);
+        QCOMPARE(tabs->count(), count - 1);
+        QVERIFY(edited.isNull());
     }
     void settingsPersistence() {
         QTemporaryDir dir;
@@ -432,11 +497,11 @@ class StrataTests : public QObject {
         view.findChild<QToolButton *>("sourceView")->click();
         QCOMPARE(view.markdownView(), DocumentView::MarkdownView::Source);
         QVERIFY(view.preview->isHidden() || view.preview->parentWidget()->isHidden());
-        QVERIFY(!view.code->isHidden());
+        QVERIFY(view.code->isVisible());
         view.findChild<QToolButton *>("previewView")->click();
         QCoreApplication::processEvents();
         QVERIFY(view.preview->width() >= qMin(view.width() - 64, view.preview->maximumWidth()) - 32);
-        QVERIFY(view.code->isHidden());
+        QVERIFY(!view.code->isVisible());
         QVERIFY(view.preview->isVisible());
         QCOMPARE(view.markdownView(), DocumentView::MarkdownView::Preview);
         DocumentView restored(&doc);
@@ -452,7 +517,7 @@ class StrataTests : public QObject {
         QCOMPARE(editors.size(), 2);
         view.setMarkdownView(DocumentView::MarkdownView::Preview);
         for (auto editor : editors)
-            QVERIFY(editor->isHidden());
+            QVERIFY(!editor->isVisible());
         QTextCursor cursor(doc.text());
         cursor.setPosition(3);
         view.setCursor(cursor);
@@ -533,8 +598,10 @@ class StrataTests : public QObject {
         QCOMPARE(window.findChild<QLabel *>("cursorStatus")->text(), QString("Ln 1, Col 5"));
         window.current()->model->text()->setModified(false);
         window.findChild<QAction *>("close")->trigger();
-        QVERIFY(window.findChild<QLabel *>("cursorStatus")->text().isEmpty());
-        QVERIFY(window.findChild<QLabel *>("documentStatus")->text().isEmpty());
+        QVERIFY(window.current());
+        QCOMPARE(window.findChild<QLabel *>("cursorStatus")->text(), QString("Ln 1, Col 1"));
+        QVERIFY(!window.findChild<QLabel *>("documentStatus")->text().isEmpty());
+        QVERIFY(window.current()->model->sourceText().isEmpty());
     }
     void persistentExternalWarning() {
         QTemporaryDir dir;

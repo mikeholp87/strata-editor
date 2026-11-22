@@ -13,6 +13,7 @@
 #include <QKeyEvent>
 #include <QScrollBar>
 #include <QSplitter>
+#include <QStyle>
 #include <QTextBrowser>
 #include <QTextEdit>
 #include <QTimer>
@@ -49,13 +50,13 @@ DocumentView::DocumentView(Document *d, QWidget *p) : QWidget(p), model(d), pane
         rich->setObjectName("richEditor");
         rich->installEventFilter(this);
         rich->setDocument(d->text());
-        panes->addWidget(rich);
+        addEditorPane(rich);
         connect(rich, &QTextEdit::cursorPositionChanged, this, &DocumentView::cursorChanged);
     } else {
         code = new CodeEditor;
         code->installEventFilter(this);
         code->setDocument(d->text());
-        panes->addWidget(code);
+        addEditorPane(code);
         connect(code, &QPlainTextEdit::cursorPositionChanged, this, &DocumentView::cursorChanged);
     }
     if (d->mode() == Document::Mode::Markdown) {
@@ -119,7 +120,7 @@ DocumentView::DocumentView(Document *d, QWidget *p) : QWidget(p), model(d), pane
     }
 }
 void DocumentView::updatePreview() {
-    if (!preview)
+    if (!preview || mode == MarkdownView::Source)
         return;
     if (previewTimer)
         previewTimer->stop();
@@ -143,6 +144,9 @@ CodeEditor *DocumentView::activeCode() const {
 }
 QTextEdit *DocumentView::activeRich() const {
     return focusedRich ? focusedRich.data() : rich;
+}
+bool DocumentView::isReadOnly() const {
+    return code ? activeCode()->isReadOnly() : activeRich()->isReadOnly();
 }
 QTextCursor DocumentView::cursor() const {
     if (code)
@@ -175,8 +179,9 @@ void DocumentView::setMarkdownView(MarkdownView value) {
                                             : mode != MarkdownView::Preview);
     }
     viewButtons->button(int(mode))->setChecked(true);
-    if (mode == MarkdownView::Preview) {
+    if (mode != MarkdownView::Source)
         updatePreview();
+    if (mode == MarkdownView::Preview) {
         if (focusInDocument)
             preview->setFocus();
     } else if (focusInDocument)
@@ -196,17 +201,84 @@ void DocumentView::split(Qt::Orientation orientation) {
         e->setFont(code->font());
         e->tabWidth = code->tabWidth;
         e->spaces = code->spaces;
+        e->numbers = code->numbers;
         e->setLineWrapMode(code->lineWrapMode());
         e->refreshOptions();
         e->setProperty("language", code->property("language"));
-        panes->addWidget(e);
+        e->setReadOnly(code->isReadOnly());
+        addEditorPane(e);
         connect(e, &QPlainTextEdit::cursorPositionChanged, this, &DocumentView::cursorChanged);
     } else {
         auto e = new QTextEdit;
         e->installEventFilter(this);
         e->setDocument(model->text());
-        panes->addWidget(e);
+        e->setReadOnly(rich->isReadOnly());
+        addEditorPane(e);
         connect(e, &QTextEdit::cursorPositionChanged, this, &DocumentView::cursorChanged);
+    }
+}
+void DocumentView::addEditorPane(QWidget *editor) {
+    auto pane = new QWidget;
+    auto layout = new QVBoxLayout(pane);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(0);
+    auto header = new QWidget;
+    header->setObjectName("splitHeader");
+    auto row = new QHBoxLayout(header);
+    row->setContentsMargins(8, 2, 4, 2);
+    row->addWidget(new QLabel(tr("Editor")));
+    row->addStretch();
+    auto close = new QToolButton;
+    close->setObjectName("closeSplitView");
+    close->setIcon(style()->standardIcon(QStyle::SP_TitleBarCloseButton));
+    close->setToolTip(tr("Close this split view; keep the document open"));
+    close->setAccessibleName(tr("Close split view"));
+    close->setAutoRaise(true);
+    row->addWidget(close);
+    layout->addWidget(header);
+    layout->addWidget(editor, 1);
+    panes->addWidget(pane);
+    connect(close, &QToolButton::clicked, this, [this, pane] { closePane(pane); });
+    updatePaneControls();
+}
+QWidget *DocumentView::editorForPane(QWidget *pane) const {
+    if (pane == previewPane)
+        return nullptr;
+    if (auto editor = pane->findChild<CodeEditor *>())
+        return editor;
+    return pane->findChild<QTextEdit *>();
+}
+void DocumentView::updatePaneControls() {
+    const int count = panes->count() - (previewPane ? 1 : 0);
+    for (int i = 0; i < panes->count(); ++i)
+        if (auto header = panes->widget(i)->findChild<QWidget *>("splitHeader"))
+            header->setVisible(count > 1);
+}
+void DocumentView::closePane(QWidget *pane) {
+    if (pane == previewPane || panes->count() - (previewPane ? 1 : 0) <= 1)
+        return;
+    const bool primary = editorForPane(pane) == (code ? static_cast<QWidget *>(code) : rich);
+    delete pane;
+    if (primary) {
+        for (int i = 0; i < panes->count(); ++i)
+            if (auto editor = editorForPane(panes->widget(i))) {
+                code = qobject_cast<CodeEditor *>(editor);
+                rich = qobject_cast<QTextEdit *>(editor);
+                break;
+            }
+    }
+    focusedCode = code;
+    focusedRich = rich;
+    (code ? static_cast<QWidget *>(code) : rich)->setFocus();
+    updatePaneControls();
+    emit cursorChanged();
+}
+void DocumentView::closeExtraSplits() {
+    for (int i = panes->count() - 1; i >= 0; --i) {
+        auto pane = panes->widget(i);
+        auto editor = editorForPane(pane);
+        if (editor && editor != (code ? static_cast<QWidget *>(code) : rich))
+            closePane(pane);
     }
 }
 void DocumentView::configure(const QFont &font, bool wrap, int tabs, bool spaces, bool numbers) {
@@ -223,7 +295,7 @@ void DocumentView::configure(const QFont &font, bool wrap, int tabs, bool spaces
 QJsonObject DocumentView::viewState() const {
     QJsonArray views;
     for (int i = 0; i < panes->count(); ++i) {
-        auto widget = panes->widget(i);
+        auto widget = editorForPane(panes->widget(i));
         QTextCursor c;
         int scroll = 0;
         if (auto e = qobject_cast<CodeEditor *>(widget)) {
@@ -248,7 +320,7 @@ void DocumentView::restoreViewState(const QJsonObject &state) {
         split(orientation);
     int index = 0;
     for (int i = 0; i < panes->count() && index < views.size(); ++i) {
-        auto widget = panes->widget(i);
+        auto widget = editorForPane(panes->widget(i));
         auto o = views[index].toObject();
         QTextCursor c(model->text());
         c.setPosition(qBound(0, o["cursor"].toInt(), model->text()->characterCount() - 1));

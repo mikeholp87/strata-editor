@@ -33,6 +33,11 @@ QString Document::title() const {
 FileData Document::read(const QString &path) {
     FileData d;
     d.path = QFileInfo(path).canonicalFilePath();
+    const QFileInfo info(path);
+    if (info.exists() && !info.isFile()) {
+        d.error = tr("Only regular files can be opened as text; pipes and devices are not supported.");
+        return d;
+    }
     QFile f(path);
     if (!f.open(QIODevice::ReadOnly)) {
         d.error = f.errorString();
@@ -42,7 +47,15 @@ FileData Document::read(const QString &path) {
         d.error = tr("Files above 8 MiB need the planned large-file viewer. This file has not been opened.");
         return d;
     }
-    auto bytes = f.readAll();
+    auto bytes = f.read(8 * 1024 * 1024 + 1);
+    if (f.error() != QFileDevice::NoError) {
+        d.error = f.errorString();
+        return d;
+    }
+    if (bytes.size() > 8 * 1024 * 1024) {
+        d.error = tr("The file grew beyond the 8 MiB opening limit.");
+        return d;
+    }
     d.digest = digest(bytes);
     QStringConverter::Encoding codec = QStringConverter::Utf8;
     if (bytes.startsWith("\xEF\xBB\xBF")) {
@@ -65,7 +78,8 @@ FileData Document::read(const QString &path) {
         d.error = tr("Truncated or invalid text encoding.");
         return d;
     }
-    QStringDecoder decoder(codec, QStringConverter::Flag::Stateless);
+    QStringDecoder decoder(codec,
+                           QStringConverter::Flag::Stateless | QStringConverter::Flag::ConvertInitialBom);
     d.text = decoder(bytes);
     if (decoder.hasError() || (d.text.contains(QChar(0)) || d.text.contains(QChar::ParagraphSeparator))) {
         d.error = tr("Invalid encoding, NUL, or unsupported U+2029 paragraph separator. Expected UTF-8 or "
@@ -84,6 +98,7 @@ void Document::apply(const FileData &d) {
     m_digest = d.digest;
     m_encoding = d.encoding;
     m_newline = d.newline;
+    m_savedNewline = m_newline;
     m_mixed = d.mixed;
     if (m_mode == Mode::Html)
         m_text->setHtml(d.text);
@@ -95,15 +110,19 @@ void Document::apply(const FileData &d) {
 void Document::setNewline(const QString &v) {
     if (v != m_newline) {
         m_newline = v;
-        m_text->setModified(true);
         emit metadataChanged();
     }
 }
 bool Document::changedOnDisk() const {
     if (m_path.isEmpty())
         return false;
+    if (!QFileInfo(m_path).isFile())
+        return true;
     QFile f(m_path);
-    return !f.open(QIODevice::ReadOnly) || f.size() > 8 * 1024 * 1024 || digest(f.readAll()) != m_digest;
+    if (!f.open(QIODevice::ReadOnly) || f.size() > 8 * 1024 * 1024)
+        return true;
+    const auto bytes = f.read(8 * 1024 * 1024 + 1);
+    return f.error() != QFileDevice::NoError || digest(bytes) != m_digest;
 }
 bool Document::save(const QString &destination, QString *error) {
     const auto absolute = QFileInfo(destination).absoluteFilePath();
@@ -128,6 +147,12 @@ bool Document::save(const QString &destination, QString *error) {
         content.replace("\n", "\r\n");
     else if (m_newline == "CR")
         content.replace('\n', '\r');
+    QStringEncoder utf8(QStringConverter::Utf8, QStringConverter::Flag::Stateless);
+    const QByteArray utf8Bytes = utf8(content);
+    if (utf8.hasError() || content.contains(QChar(0))) {
+        *error = tr("The document contains invalid Unicode or a NUL character. The file was not changed.");
+        return false;
+    }
     QByteArray bytes;
     if (m_encoding.startsWith("UTF-16")) {
         bool le = m_encoding.endsWith("LE");
@@ -137,7 +162,11 @@ bool Document::save(const QString &destination, QString *error) {
     } else {
         if (m_encoding == "UTF-8 BOM")
             bytes = QByteArray::fromHex("efbbbf");
-        bytes += content.toUtf8();
+        bytes += utf8Bytes;
+    }
+    if (bytes.size() > 8 * 1024 * 1024) {
+        *error = tr("The encoded document exceeds the 8 MiB opening limit. Reduce its size or save it using another editor.");
+        return false;
     }
     QSaveFile f(absolute);
     f.setDirectWriteFallback(false);
@@ -149,13 +178,24 @@ bool Document::save(const QString &destination, QString *error) {
         *error = tr("Could not preserve file permissions.");
         return false;
     }
-    if (f.write(bytes) != bytes.size() || !f.commit()) {
+    if (f.write(bytes) != bytes.size()) {
+        *error = f.errorString();
+        return false;
+    }
+    // shortcut: optimistic disk check; non-cooperating writers still need an OS-level locking protocol.
+    if (same && changedOnDisk()) {
+        f.cancelWriting();
+        *error = tr("The file changed while saving. Reload it or save a separate copy.");
+        return false;
+    }
+    if (!f.commit()) {
         *error = f.errorString();
         return false;
     }
     m_path = QFileInfo(absolute).canonicalFilePath();
     m_digest = digest(bytes);
     m_mixed = false;
+    m_savedNewline = m_newline;
     m_text->setModified(false);
     emit metadataChanged();
     return true;

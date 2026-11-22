@@ -75,6 +75,8 @@ void CodeEditor::highlightLine() {
     gutter->update();
 }
 void CodeEditor::indent(bool reverse) {
+    if (isReadOnly())
+        return;
     auto c = textCursor();
     int first = document()->findBlock(c.selectionStart()).blockNumber();
     int last = document()->findBlock(qMax(c.selectionStart(), c.selectionEnd() - 1)).blockNumber();
@@ -99,6 +101,8 @@ void CodeEditor::indent(bool reverse) {
     c.endEditBlock();
 }
 void CodeEditor::toggleComment() {
+    if (isReadOnly())
+        return;
     auto c = textCursor();
     int first = document()->findBlock(c.selectionStart()).blockNumber(),
         last = document()->findBlock(qMax(c.selectionStart(), c.selectionEnd() - 1)).blockNumber();
@@ -125,6 +129,8 @@ void CodeEditor::toggleComment() {
     c.endEditBlock();
 }
 void CodeEditor::duplicateLine() {
+    if (isReadOnly())
+        return;
     auto c = textCursor();
     c.beginEditBlock();
     c.select(QTextCursor::LineUnderCursor);
@@ -135,6 +141,10 @@ void CodeEditor::duplicateLine() {
     setTextCursor(c);
 }
 void CodeEditor::keyPressEvent(QKeyEvent *e) {
+    if (isReadOnly()) {
+        QPlainTextEdit::keyPressEvent(e);
+        return;
+    }
     if (e->key() == Qt::Key_Tab && !(e->modifiers() & Qt::ControlModifier)) {
         if (textCursor().hasSelection())
             indent();
@@ -171,7 +181,8 @@ void CodeEditor::keyPressEvent(QKeyEvent *e) {
             setTextCursor(c);
             return;
         }
-        if (closes.contains(value) && document()->characterAt(textCursor().position()) == value[0]) {
+        if (!textCursor().hasSelection() && closes.contains(value) &&
+            document()->characterAt(textCursor().position()) == value[0]) {
             auto c = textCursor();
             c.movePosition(QTextCursor::Right);
             setTextCursor(c);

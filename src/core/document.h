@@ -49,6 +49,9 @@ class Document : public QObject {
     }
     void setNewline(const QString &value);
     bool changedOnDisk() const;
+    bool isModified() const {
+        return m_text->isModified() || m_newline != m_savedNewline;
+    }
     static Mode modeForPath(const QString &path);
     static FileData read(const QString &path);
     void apply(const FileData &data);
@@ -61,7 +64,7 @@ class Document : public QObject {
   private:
     SafeDocument *m_text;
     Mode m_mode;
-    QString m_path, m_encoding = "UTF-8", m_newline = "LF";
+    QString m_path, m_encoding = "UTF-8", m_newline = "LF", m_savedNewline = "LF";
     QByteArray m_digest;
     bool m_mixed = false;
 };

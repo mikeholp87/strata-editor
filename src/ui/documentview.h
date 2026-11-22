@@ -25,12 +25,14 @@ class DocumentView : public QWidget {
     QTextBrowser *preview = nullptr;
     CodeEditor *activeCode() const;
     QTextEdit *activeRich() const;
+    bool isReadOnly() const;
     QTextCursor cursor() const;
     void setCursor(const QTextCursor &cursor);
     QJsonObject viewState() const;
     void restoreViewState(const QJsonObject &state);
     void togglePreview();
     void split(Qt::Orientation orientation);
+    void closeExtraSplits();
     void configure(const QFont &font, bool wrap, int tabWidth, bool spaces, bool numbers);
   signals:
     void cursorChanged();
@@ -50,4 +52,8 @@ class DocumentView : public QWidget {
     QPointer<CodeEditor> focusedCode;
     QPointer<QTextEdit> focusedRich;
     void updatePreview();
+    void addEditorPane(QWidget *editor);
+    QWidget *editorForPane(QWidget *pane) const;
+    void closePane(QWidget *pane);
+    void updatePaneControls();
 };

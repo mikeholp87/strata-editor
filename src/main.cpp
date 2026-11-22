@@ -33,7 +33,8 @@ int main(int argc, char **argv) {
         return 1;
     }
     MainWindow window(!parser.isSet("no-session") && !parser.isSet("smoke-test") &&
-                      !parser.isSet("screenshot"));
+                      !parser.isSet("screenshot"), parser.isSet("no-session") || parser.isSet("smoke-test") ||
+                      parser.isSet("screenshot"));
     for (auto path : parser.positionalArguments()) {
         if (QFileInfo(path).isDir())
             window.setProject(path);

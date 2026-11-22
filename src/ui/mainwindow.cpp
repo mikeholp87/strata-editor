@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "core/persistence.h"
+#include "core/recovery.h"
 #include "core/shortcuts.h"
 #include "documentview.h"
 #include "editor/codeeditor.h"
@@ -13,7 +14,7 @@
 #include <QtConcurrent>
 #include <QtWidgets>
 
-MainWindow::MainWindow(bool restoreWorkspace) : settings("StrataEditor", "StrataEditor") {
+MainWindow::MainWindow(bool restoreWorkspace, bool preserve) : settings("StrataEditor", "StrataEditor"), preserveRecovery(preserve) {
     setObjectName("mainWindow");
     setWindowTitle(STRATA_PRODUCT_NAME);
     resize(1180, 780);
@@ -25,6 +26,11 @@ MainWindow::MainWindow(bool restoreWorkspace) : settings("StrataEditor", "Strata
     tabs->setTabsClosable(true);
     tabs->setMovable(true);
     tabs->setDocumentMode(true);
+    tabs->setElideMode(Qt::ElideMiddle);
+    tabs->setUsesScrollButtons(true);
+    tabs->tabBar()->setObjectName("documentTabBar");
+    tabs->tabBar()->setDrawBase(false);
+    tabs->tabBar()->setExpanding(false);
     auto center = new QWidget;
     auto layout = new QVBoxLayout(center);
     layout->setContentsMargins(0, 0, 0, 0);
@@ -57,6 +63,7 @@ MainWindow::MainWindow(bool restoreWorkspace) : settings("StrataEditor", "Strata
     auto options = new QHBoxLayout;
     matchCase = new QCheckBox(tr("Match case"));
     wholeWord = new QCheckBox(tr("Whole words"));
+    wholeWord->setObjectName("wholeWord");
     regex = new QCheckBox(tr("Regular expression"));
     for (auto option : {matchCase, wholeWord, regex})
         options->addWidget(option);
@@ -113,6 +120,7 @@ MainWindow::MainWindow(bool restoreWorkspace) : settings("StrataEditor", "Strata
     files->setReadOnly(true);
     files->setRootPath(QDir::homePath());
     tree = new QTreeView;
+    tree->setObjectName("projectTree");
     tree->setAccessibleName(tr("Project files"));
     tree->setMinimumWidth(120);
     tree->setModel(files);
@@ -184,7 +192,6 @@ MainWindow::MainWindow(bool restoreWorkspace) : settings("StrataEditor", "Strata
     auto timer = new QTimer(this);
     timer->setInterval(15000);
     connect(timer, &QTimer::timeout, this, &MainWindow::recoverySnapshot);
-    timer->start();
     restoreGeometry(settings.value("geometry").toByteArray());
     restoreState(settings.value("layout").toByteArray());
     if (restoreWorkspace)
@@ -192,6 +199,7 @@ MainWindow::MainWindow(bool restoreWorkspace) : settings("StrataEditor", "Strata
     if (!tabs->count() && loading.isEmpty())
         newDocument();
     updateUi();
+    timer->start();
 }
 DocumentView *MainWindow::current() const {
     return qobject_cast<DocumentView *>(tabs->currentWidget());
@@ -288,6 +296,8 @@ void MainWindow::openFile(const QString &path, int line) {
             return;
         if (!data.error.isEmpty()) {
             QMessageBox::warning(this, tr("Cannot open file"), data.error);
+            if (loading.isEmpty() && !tabs->count())
+                newDocument();
             return;
         }
         auto doc = new Document(Document::modeForPath(canonical), this);
@@ -314,7 +324,9 @@ void MainWindow::openFile(const QString &path, int line) {
     worker->setFuture(QtConcurrent::run(&Document::read, canonical));
 }
 bool MainWindow::saveCurrent(bool saveAs) {
-    auto v = current();
+    return saveView(current(), saveAs);
+}
+bool MainWindow::saveView(DocumentView *v, bool saveAs) {
     if (!v)
         return false;
     auto d = v->model;
@@ -353,13 +365,13 @@ bool MainWindow::saveCurrent(bool saveAs) {
     return true;
 }
 bool MainWindow::canClose(DocumentView *v) {
-    if (!v->model->text()->isModified())
+    if (!v->model->isModified())
         return true;
     tabs->setCurrentWidget(v);
     auto answer = QMessageBox::warning(
         this, tr("Unsaved document"), tr("Save changes to %1?").arg(v->model->title()),
         QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel, QMessageBox::Save);
-    return answer == QMessageBox::Discard || (answer == QMessageBox::Save && saveCurrent());
+    return answer == QMessageBox::Discard || (answer == QMessageBox::Save && saveView(v));
 }
 bool MainWindow::closeTab(int i) {
     auto v = qobject_cast<DocumentView *>(tabs->widget(i));
@@ -371,11 +383,16 @@ bool MainWindow::closeTab(int i) {
     tabs->removeTab(i);
     delete v;
     delete d;
+    if (!tabs->count())
+        newDocument();
     recoverySnapshot();
     updateUi();
     return true;
 }
 void MainWindow::configureViews() {
+    auto sidebarFont = QApplication::font();
+    sidebarFont.setPointSize(qBound(7, settings.value("sidebarFontSize", sidebarFont.pointSize()).toInt(), 48));
+    tree->setFont(sidebarFont);
     QFont font(settings.value("font", "monospace").toString(), settings.value("fontSize", 12).toInt());
     font.setStyleHint(QFont::Monospace);
     for (int i = 0; i < tabs->count(); ++i) {
@@ -390,13 +407,24 @@ void MainWindow::configureViews() {
 void MainWindow::updateUi() {
     for (int i = 0; i < tabs->count(); ++i) {
         auto v = qobject_cast<DocumentView *>(tabs->widget(i));
-        tabs->setTabText(i, v->model->title() + (v->model->text()->isModified() ? " •" : ""));
+        auto title = v->model->title();
+        bool modified = v->model->isModified();
+        tabs->setTabText(i, title + (modified ? " •" : ""));
+        tabs->tabBar()->setAccessibleTabName(
+            i, title + (modified ? tr(", unsaved changes") : QString()) +
+                   (v->externallyChanged() ? tr(", changed on disk") : QString()));
+        for (auto side : {QTabBar::LeftSide, QTabBar::RightSide}) {
+            if (auto close = tabs->tabBar()->tabButton(i, side)) {
+                close->setAccessibleName(tr("Close %1").arg(title));
+                close->setToolTip(tr("Close %1").arg(title));
+            }
+        }
         tabs->setTabToolTip(i, v->model->path() +
             (v->externallyChanged() ? tr("\nChanged on disk. Reload or save a copy.") : QString()));
     }
     auto v = current();
     if (formatBar)
-        formatBar->setVisible(v && v->rich);
+        formatBar->setVisible(!focusMode && v && v->rich);
     for (auto action : commands)
         if (action->objectName().startsWith("format"))
             action->setEnabled(v && v->rich);
@@ -442,22 +470,41 @@ void MainWindow::updateTheme() {
     qApp->setStyleSheet(QString(
         "QToolBar {spacing: 2px; padding: 2px; border: none;} "
         "QToolButton, QPushButton {padding: 4px 8px;} "
-        "QTabBar::tab {padding: 7px 12px;} "
-        "QTabBar::tab:selected {border-bottom: 2px solid %1;} "
+        "QTabWidget#documentTabs::pane {border: none;} "
+        "QTabBar#documentTabBar {background: palette(window);} "
+        "QTabBar#documentTabBar::tab {background: palette(window); color: %4; "
+        "border: none; border-right: 1px solid %2; border-top: 2px solid transparent; "
+        "border-bottom: 2px solid transparent; min-width: 96px; max-width: 220px; min-height: 20px; "
+        "padding: 6px 12px; margin: 0;} "
+        "QTabBar#documentTabBar::tab:!selected:hover {background: palette(alternate-base); "
+        "color: palette(text);} "
+        "QTabBar#documentTabBar::tab:selected {background: palette(base); color: palette(text); "
+        "border-top-color: %1;} "
+        "QTabBar#documentTabBar::tab:selected:focus {border-bottom-color: %1;} "
+        "QTabBar#documentTabBar::close-button {image: url(:/strata/tab-close-%3.png); "
+        "width: 20px; height: 20px;} "
+        "QTabBar#documentTabBar::close-button:hover {image: url(:/strata/tab-close-hover.png);} "
+        "QTabBar#documentTabBar::tear {background: palette(window); border: none; width: 0;} "
+        "QTabBar#documentTabBar::scroller {width: 48px;} "
+        "QTabBar#documentTabBar QToolButton {background: palette(window); border: none; "
+        "border-left: 1px solid %2; padding: 0; width: 24px;} "
+        "QTabBar#documentTabBar QToolButton:hover {background: palette(alternate-base);} "
+        "QTabBar#documentTabBar QToolButton:focus {border: 2px solid %1;} "
         "QDockWidget::title {padding: 6px;} QLineEdit, QSpinBox, QComboBox {padding: 4px;} "
         "QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QAbstractButton:focus {border: 2px solid %1;} "
         "QTreeView {border:none;} QStatusBar {padding: 2px;} "
         "#markdownControls QToolButton:checked {background: palette(alternate-base); "
         "border-bottom: 2px solid %1;} "
         "#externalWarning {background: palette(alternate-base);}")
-        .arg(p.color(QPalette::Link).name()));
+        .arg(p.color(QPalette::Link).name(), light ? "#CBD5E1" : "#293545", light ? "light" : "dark",
+             p.color(QPalette::PlaceholderText).name()));
     configureViews();
 }
 void MainWindow::reloadCurrent() {
     auto v = current();
     if (!v || v->model->path().isEmpty())
         return;
-    if (v->model->text()->isModified() &&
+    if (v->model->isModified() &&
         QMessageBox::warning(this, tr("Reload"), tr("Discard unsaved edits and reload from disk?"),
                              QMessageBox::Discard | QMessageBox::Cancel,
                              QMessageBox::Cancel) != QMessageBox::Discard)
@@ -467,11 +514,20 @@ void MainWindow::reloadCurrent() {
         QMessageBox::warning(this, tr("Reload failed"), data.error);
     else {
         v->model->apply(data);
+        if (!watcher.files().contains(v->model->path()))
+            watcher.addPath(v->model->path());
         v->setExternalChange(false);
         updateUi();
     }
 }
 void MainWindow::closeEvent(QCloseEvent *event) {
+    if (git->isBusy()) {
+        gitDock->show();
+        statusBar()->showMessage(
+            tr("Git is running. Wait for it to finish or cancel the read-only command."), 10000);
+        event->ignore();
+        return;
+    }
     if (!loading.isEmpty()) {
         statusBar()->showMessage(tr("Please wait for files to finish opening."), 4000);
         event->ignore();
@@ -483,7 +539,11 @@ void MainWindow::closeEvent(QCloseEvent *event) {
             return;
         }
     saveSession();
-    Persistence::write(Persistence::dataPath("recovery.json"), {{"buffers", QJsonArray{}}});
+    QString recoveryError;
+    if (!recoveryBlocked && !preserveRecovery &&
+        !Recovery::save(Persistence::dataPath("recovery.json"), {{"buffers", QJsonArray{}}}, &recoveryError))
+        QMessageBox::warning(this, tr("Recovery cleanup failed"),
+                             tr("Previous recovery data was retained: %1").arg(recoveryError));
     shuttingDown = true;
     event->accept();
 }

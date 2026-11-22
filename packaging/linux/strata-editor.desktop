@@ -5,6 +5,6 @@ Comment=Edit text, code, Markdown and formatted HTML
 Exec=strata-editor %F
 Icon=strata-editor
 Terminal=false
-Categories=Utility;TextEditor;Development;
+Categories=Utility;TextEditor;
 MimeType=text/plain;text/markdown;text/html;text/x-c++src;application/json;
 StartupNotify=true

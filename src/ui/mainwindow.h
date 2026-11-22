@@ -18,7 +18,7 @@ class GitPanel;
 class MainWindow : public QMainWindow {
     Q_OBJECT
   public:
-    explicit MainWindow(bool restoreWorkspace = true);
+    explicit MainWindow(bool restoreWorkspace = true, bool preserveRecovery = false);
     DocumentView *current() const;
     DocumentView *newDocument(Document::Mode mode = Document::Mode::Text);
     void openFile(const QString &path, int line = 0);
@@ -37,6 +37,9 @@ class MainWindow : public QMainWindow {
     QSettings settings;
     QTabWidget *tabs;
     QToolBar *formatBar;
+    QToolBar *focusExitBar;
+    QByteArray focusLayout;
+    bool focusMode = false;
     QWidget *findBar, *replaceRow;
     QLabel *cursorStatus, *documentStatus;
     QLineEdit *findText, *replaceText;
@@ -54,6 +57,8 @@ class MainWindow : public QMainWindow {
     QHash<QString, QJsonObject> pendingViews;
     QString pendingActive;
     bool shuttingDown = false;
+    bool recoveryBlocked = false;
+    bool preserveRecovery = false;
     DocumentView *attach(Document *doc);
     QAction *command(const QString &id, const QString &title, const QKeySequence &key,
                      const std::function<void()> &fn, QMenu *menu = nullptr);
@@ -63,6 +68,7 @@ class MainWindow : public QMainWindow {
     void updateTheme();
     void configureViews();
     bool closeTab(int index);
+    bool saveView(DocumentView *view, bool saveAs = false);
     bool canClose(DocumentView *view);
     void palette(bool quickOpen = false);
     void preferences();

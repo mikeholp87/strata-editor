@@ -15,6 +15,8 @@ class ProjectSearch : public QWidget {
     explicit ProjectSearch(QWidget *parent = nullptr);
     ~ProjectSearch();
     QString root;
+    void setRoot(const QString &path);
+    quint64 rootRevision = 0, searchRevision = 0;
     static QList<SearchHit> search(const QString &root, const QString &query,
                                    const std::shared_ptr<std::atomic_bool> &cancel);
   signals:
