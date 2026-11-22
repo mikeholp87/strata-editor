@@ -189,3 +189,7 @@ Build with CMake, run CTest, and include behavioral regression coverage for file
 ## License
 
 Original source is [MIT licensed](LICENSE). Dynamically linked libraries retain their own [license terms and notices](THIRD_PARTY.md).
+
+## Author
+
+Built by [Mike Holp](https://www.ai-automation-station.com/about.html) with AI coding tools. See more build guides on [AI Automation Station](https://www.ai-automation-station.com/guides.html), and more projects at [github.com/mikeholp87](https://github.com/mikeholp87).
