@@ -49,7 +49,8 @@
   "downloadUrl": "https://github.com/mikeholp87/strata-editor/releases/latest"
 }
 </script>
-</head>
+    <style>.hero{grid-template-columns:minmax(0,1fr)!important;gap:28px!important}.demo-frame{width:100%;margin:0}.demo-frame iframe{display:block;width:100%;border:1px solid rgba(128,128,128,.35);border-radius:12px;background:transparent;box-shadow:0 24px 60px -28px rgba(0,0,0,.45)}</style>
+  </head>
 <body>
   <a class="skip" href="#content">Skip to content</a>
   <div class="wrap">
@@ -70,19 +71,12 @@
         <p class="lead">Edit text, source code, Markdown and formatted HTML in a native desktop app. Keep two views of a document open, see your Markdown as you write, and work without an account or cloud service.</p>
         <div class="actions">
           <a class="button" href="#install">Install on Linux</a>
-<a class="button secondary" href="./demo/">Try the demo</a>
           <a class="button secondary" href="https://github.com/mikeholp87/strata-editor">View on GitHub</a>
         </div>
         <ul class="badges" aria-label="Project highlights">
           <li>C++20 and Qt 6</li><li>No telemetry</li><li>Works offline</li><li>MIT licensed</li>
         </ul>
-        <figure class="workspace">
-          <picture>
-              <source media="(prefers-color-scheme: light)" srcset="./screenshot-light.png">
-              <img src="./screenshot.png" width="1416" height="936" fetchpriority="high" alt="Strata Editor with a project explorer, Markdown source on the left, and a rendered preview on the right">
-          </picture>
-          <figcaption>The real Strata workspace. Source, split and read-only preview modes stay one click away.</figcaption>
-        </figure>
+        <div class="demo-frame"><iframe id="demo-frame" src="./embed/" title="Interactive Strata Editor demo with sample data" loading="lazy" height="720"></iframe></div>
       </section>
 <section id="what-is" class="section" aria-labelledby="what-is-title">
 <div class="section-head">
@@ -218,5 +212,6 @@ ctest --test-dir build -C Release --output-on-failure
     <footer class="site-footer"><p>Strata Editor by Mike Holp. Original source is MIT licensed.</p><nav aria-label="Footer"><a href="https://github.com/mikeholp87/strata-editor">GitHub</a>
           <a href="https://github.com/sponsors/mikeholp87"><span class="sponsor-heart" aria-hidden="true">♥</span> Sponsor</a><a href="https://github.com/mikeholp87/strata-editor/blob/main/docs/USER_GUIDE.md">User guide</a><a href="https://github.com/mikeholp87/strata-editor/blob/main/LICENSE">License</a><a href="https://github.com/mikeholp87/strata-editor/blob/main/SECURITY.md">Security</a><a href="https://mikeholp87.github.io/">All projects</a><a href="https://www.ai-automation-station.com/guides.html">Build guides</a><a href="https://www.ai-automation-station.com/">AI Automation Station</a></nav></footer>
   </div>
-</body>
+    <script>(function(){var f=document.getElementById("demo-frame");if(!f||f.hasAttribute("data-fixed"))return;function fit(){try{f.style.height=f.contentDocument.body.offsetHeight+2+"px"}catch(e){}}f.addEventListener("load",function(){fit();try{new ResizeObserver(fit).observe(f.contentDocument.body)}catch(e){}})})();</script>
+  </body>
 </html>
