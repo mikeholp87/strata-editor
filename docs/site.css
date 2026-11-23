@@ -157,3 +157,14 @@ details p { max-width: 72ch; margin: 0 0 20px; color: var(--muted); overflow-wra
 @media (prefers-reduced-motion: reduce) {
   :root { scroll-behavior: auto; }
 }
+
+.sponsor-heart { color: #bf3989; }
+@media (prefers-color-scheme: dark) { .sponsor-heart { color: #db61a2; } }
+.pill.sponsor { display: inline-flex; align-items: center; gap: 6px; }
+.pill.sponsor:hover { border-color: #bf3989; }
+.support { margin: 72px 0 24px; padding: 36px 28px; border: 1px solid var(--line); border-radius: 16px; background: var(--paper); text-align: center; }
+.support h2 { margin: 0 0 10px; }
+.support p { max-width: 58ch; margin: 0 auto 22px; color: var(--muted); }
+.support p.small { margin: 16px auto 0; font-size: 14px; }
+.button.sponsor-cta { gap: 8px; }
+@media (max-width: 480px) { header { flex-wrap: wrap; row-gap: 10px; } .nav { flex-wrap: wrap; gap: 8px; } .nav .pill { padding: 7px 11px; } .nav a { font-size: 14px; } .support { padding: 28px 18px; } }
