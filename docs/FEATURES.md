@@ -1,4 +1,4 @@
-# Feature status (0.1.1 preview)
+# Feature status (0.1.2 preview)
 
 Implemented: new/open/multiple open/save/save-as/save-all/close/reopen/recent, reload, drag/drop, print/preview, text and HTML modes, Markdown Source/Split/Preview modes with session persistence, HTML/PDF export; tabs, side-by-side/stacked shared splits; line numbers, current line, auto-indent, pairing, line duplication, comments, indentation, selection case conversion, whitespace trimming, LF/CRLF conversion, go to line/column, font/wrap preferences; basic language detection and lexical highlighting for all initial requested languages; project tree and hidden files, loaded-tree quick open, fuzzy command palette; case/whole-word/regex find/replace; bounded cancellable project literal search; Git status/branch/diff/stage/unstage/commit/history through asynchronous QProcess; external terminal; settings, dock layouts and session/recovery persistence; searchable command shortcut editor with recording, clear/reset, conflict checks and JSON import/export.
 

@@ -5,7 +5,7 @@
 
 A native **C++20 / Qt 6** desktop editor for plain text, source code, Markdown and formatted HTML. Keep code and writing in one workspace, with shared-document splits, a live Markdown preview and local recovery.
 
-**0.1.1 preview:** the editing baseline is implemented, including configurable keyboard shortcuts and Source / Split / Preview modes. Advanced IDE features and large-file support remain on the [roadmap](docs/ROADMAP.md).
+**0.1.2 preview:** the editing baseline is implemented, including configurable keyboard shortcuts and Source / Split / Preview modes. Advanced IDE features and large-file support remain on the [roadmap](docs/ROADMAP.md).
 
 [Project website](https://mikeholp87.github.io/strata-editor/) · [User guide](docs/USER_GUIDE.md) · [Build instructions](docs/BUILDING.md) · [Exact feature boundaries](docs/FEATURES.md)
 

@@ -14,7 +14,7 @@ Ensure ~/.local/bin is on PATH. Desktop entry and SVG icon install under share. 
 ```sh
 cpack --config build/CPackConfig.cmake -G DEB -B dist
 cpack --config build/CPackConfig.cmake -G TGZ
-sudo apt install ./dist/strata-editor_0.1.1_amd64.deb
+sudo apt install ./dist/strata-editor_0.1.2_amd64.deb
 ```
 
 DEB declares Qt runtime requirements by hand (each as `libqt6Xt64 | libqt6X`, so it installs on both Ubuntu 24.04 and Debian); the TGZ also needs system Qt and is not an AppImage. AppImage, RPM/Flatpak and signed installers are planned. Tags matching the CMake project version (for example, `v0.1.0`) build, test, install-check and publish a `.deb` plus SHA256 checksums through `.github/workflows/release.yml`. Pull requests and manual dispatches only build candidates. Release packages use Ubuntu 24.04 amd64 so their runtime dependencies match that baseline.
