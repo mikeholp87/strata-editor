@@ -217,6 +217,37 @@ void MainWindow::buildCommands() {
         if (v->code)
             v->activeCode()->toggleComment();
     });
+    command(
+        "complete", tr("Show completions"), QKeySequence("Ctrl+Space"),
+        [this] {
+            if (auto v = current(); v && v->code && !v->isReadOnly())
+                v->activeCode()->showCompletion(true);
+        },
+        edit);
+    auto markdownMenu = edit->addMenu(tr("Markdown"));
+    auto markdown = [this, markdownMenu](QString id, QString title, QKeySequence key, auto fn) {
+        command(
+            id, title, key,
+            [this, fn] {
+                auto v = current();
+                if (!v || !v->code || v->isReadOnly() || !v->activeCode()->isMarkdown())
+                    return;
+                if (v->markdownView() == DocumentView::MarkdownView::Preview)
+                    v->setMarkdownView(DocumentView::MarkdownView::Split);
+                fn(v->activeCode());
+            },
+            markdownMenu);
+    };
+    markdown("mdCode", tr("Inline code"), QKeySequence("Ctrl+E"), [](CodeEditor *e) { e->toggleInline("`"); });
+    markdown("mdHeading1", tr("Heading 1"), QKeySequence("Ctrl+Alt+1"), [](CodeEditor *e) { e->setHeading(1); });
+    markdown("mdHeading2", tr("Heading 2"), QKeySequence("Ctrl+Alt+2"), [](CodeEditor *e) { e->setHeading(2); });
+    markdown("mdHeading3", tr("Heading 3"), QKeySequence("Ctrl+Alt+3"), [](CodeEditor *e) { e->setHeading(3); });
+    markdown("mdBullets", tr("Bulleted list"), {}, [](CodeEditor *e) { e->toggleLineKind(CodeEditor::LineKind::Bullet); });
+    markdown("mdNumbers", tr("Numbered list"), {}, [](CodeEditor *e) { e->toggleLineKind(CodeEditor::LineKind::Number); });
+    markdown("mdTasks", tr("Task list"), {}, [](CodeEditor *e) { e->toggleLineKind(CodeEditor::LineKind::Task); });
+    markdown("mdQuote", tr("Quote"), {}, [](CodeEditor *e) { e->toggleLineKind(CodeEditor::LineKind::Quote); });
+    markdown("mdLink", tr("Link"), QKeySequence("Ctrl+Alt+K"), [](CodeEditor *e) { e->insertLink(); });
+    markdown("mdCodeBlock", tr("Code block"), {}, [](CodeEditor *e) { e->insertCodeBlock(); });
     cursorAction("indent", tr("Indent"), QKeySequence("Ctrl+]"), [](DocumentView *v) {
         if (v->code)
             v->activeCode()->indent();

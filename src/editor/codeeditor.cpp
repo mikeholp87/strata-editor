@@ -1,5 +1,10 @@
 #include "codeeditor.h"
+#include "completion.h"
+#include <QAbstractItemView>
+#include <QCompleter>
 #include <QKeyEvent>
+#include <QScrollBar>
+#include <QStringListModel>
 #include <QPainter>
 #include <QRegularExpression>
 #include <QTextBlock>
@@ -15,7 +20,15 @@ class Gutter : public QWidget {
         editor->paintGutter(e);
     }
 };
-CodeEditor::CodeEditor(QWidget *p) : QPlainTextEdit(p), gutter(new Gutter(this)) {
+CodeEditor::CodeEditor(QWidget *p)
+    : QPlainTextEdit(p), gutter(new Gutter(this)), completer(new QCompleter(new QStringListModel, this)) {
+    completer->model()->setParent(completer);
+    completer->setWidget(this);
+    completer->setCompletionMode(QCompleter::PopupCompletion);
+    completer->setCaseSensitivity(Qt::CaseInsensitive);
+    completer->setMaxVisibleItems(10);
+    connect(completer, QOverload<const QString &>::of(&QCompleter::activated), this,
+            &CodeEditor::insertCompletion);
     setObjectName("codeEditor");
     setAccessibleName(tr("Source editor"));
     setFrameShape(QFrame::NoFrame);
@@ -140,7 +153,82 @@ void CodeEditor::duplicateLine() {
     c.endEditBlock();
     setTextCursor(c);
 }
+namespace {
+bool wordChar(QChar c) {
+    return c.isLetterOrNumber() || c == QLatin1Char('_');
+}
+} // namespace
+void CodeEditor::insertCompletion(const QString &text) {
+    auto c = textCursor();
+    c.movePosition(QTextCursor::Left, QTextCursor::KeepAnchor, completer->completionPrefix().size());
+    c.insertText(text);
+    setTextCursor(c);
+}
+void CodeEditor::showCompletion(bool force) {
+    auto popup = completer->popup();
+    auto c = textCursor();
+    if (!completion || isReadOnly() || c.hasSelection()) {
+        popup->hide();
+        return;
+    }
+    const auto line = c.block().text();
+    const int pos = c.positionInBlock();
+    int start = pos, end = pos;
+    while (start > 0 && wordChar(line[start - 1]))
+        --start;
+    while (end < line.size() && wordChar(line[end]))
+        ++end;
+    const auto prefix = line.mid(start, pos - start);
+    if (prefix.size() < (force ? 1 : 3)) {
+        popup->hide();
+        return;
+    }
+    if (force || !popup->isVisible()) {
+        const int base = c.block().position();
+        // ponytail: skips word scanning above ~4M characters; needs an incremental index to lift
+        const auto text = document()->characterCount() > 4000000 ? QString() : toPlainText();
+        static_cast<QStringListModel *>(completer->model())
+            ->setStringList(Completion::candidates(text, base + start, base + end,
+                                                   property("language").toString()));
+    }
+    completer->setCompletionPrefix(prefix);
+    auto model = completer->completionModel();
+    if (model->rowCount() == 0 ||
+        (model->rowCount() == 1 && model->index(0, 0).data().toString() == prefix)) {
+        popup->hide();
+        return;
+    }
+    popup->setCurrentIndex(model->index(0, 0));
+    auto at = c;
+    at.setPosition(c.block().position() + start);
+    auto rect = cursorRect(at);
+    rect.setWidth(popup->sizeHintForColumn(0) + popup->verticalScrollBar()->sizeHint().width() + 16);
+    completer->complete(rect);
+}
 void CodeEditor::keyPressEvent(QKeyEvent *e) {
+    if (completer->popup()->isVisible())
+        switch (e->key()) {
+        case Qt::Key_Enter:
+        case Qt::Key_Return:
+        case Qt::Key_Escape:
+        case Qt::Key_Tab:
+        case Qt::Key_Backtab:
+            e->ignore(); // the completion popup accepts or dismisses
+            return;
+        default:
+            break;
+        }
+    handleKey(e);
+    if (isReadOnly())
+        return;
+    const auto t = e->text();
+    const bool typed = !t.isEmpty() && wordChar(t[0]) && !(e->modifiers() & (Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier));
+    if (typed || (e->key() == Qt::Key_Backspace && completer->popup()->isVisible()))
+        showCompletion();
+    else
+        completer->popup()->hide();
+}
+void CodeEditor::handleKey(QKeyEvent *e) {
     if (isReadOnly()) {
         QPlainTextEdit::keyPressEvent(e);
         return;
@@ -156,6 +244,8 @@ void CodeEditor::keyPressEvent(QKeyEvent *e) {
         indent(true);
         return;
     }
+    if (isMarkdown() && (e->key() == Qt::Key_Return || e->key() == Qt::Key_Enter) && continueMarkdownLine())
+        return;
     if (autoIndent && (e->key() == Qt::Key_Return || e->key() == Qt::Key_Enter)) {
         auto c = textCursor();
         auto s = c.block().text();

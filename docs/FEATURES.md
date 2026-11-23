@@ -1,6 +1,10 @@
-# Feature status (0.1.0 preview)
+# Feature status (0.1.1 preview)
 
 Implemented: new/open/multiple open/save/save-as/save-all/close/reopen/recent, reload, drag/drop, print/preview, text and HTML modes, Markdown Source/Split/Preview modes with session persistence, HTML/PDF export; tabs, side-by-side/stacked shared splits; line numbers, current line, auto-indent, pairing, line duplication, comments, indentation, selection case conversion, whitespace trimming, LF/CRLF conversion, go to line/column, font/wrap preferences; basic language detection and lexical highlighting for all initial requested languages; project tree and hidden files, loaded-tree quick open, fuzzy command palette; case/whole-word/regex find/replace; bounded cancellable project literal search; Git status/branch/diff/stage/unstage/commit/history through asynchronous QProcess; external terminal; settings, dock layouts and session/recovery persistence; searchable command shortcut editor with recording, clear/reset, conflict checks and JSON import/export.
+
+Autocomplete: a popup suggests words (3+ characters) from the current document plus keywords for C/C++, Rust, Python, JavaScript/TypeScript, Bash, SQL, CSS and HTML. It opens while typing or with Ctrl+Space; Tab/Enter accepts and Esc dismisses. It is lexical, not language-server aware.
+
+Markdown source formatting: Edit → Markdown and the Markdown toolbar toggle bold, italic, strike, inline code, headings, bulleted/numbered/task lists, quotes, links and fenced code blocks, per selected line. Enter continues lists and quotes outside code fences; an empty item ends the list.
 
 Rich formatting: bold, italic, underline, strike, paragraph/headings, font family/size, foreground/background, bullets/numbering, alignment, links, rules, tables. User content cannot load external images or remote resources. Rich paste through the application shortcut is plain text; Qt HTML import supports its own safe subset without script execution.
 
