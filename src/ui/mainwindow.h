@@ -37,6 +37,7 @@ class MainWindow : public QMainWindow {
     QSettings settings;
     QTabWidget *tabs;
     QToolBar *formatBar;
+    QToolBar *markdownBar = nullptr;
     QToolBar *focusExitBar;
     QByteArray focusLayout;
     bool focusMode = false;

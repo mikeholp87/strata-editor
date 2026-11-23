@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
     app.setApplicationName("strata-editor");
     app.setApplicationDisplayName(STRATA_PRODUCT_NAME);
     app.setOrganizationName("StrataEditor");
-    app.setApplicationVersion("0.1.1");
+    app.setApplicationVersion("0.1.2");
     app.setStyle("Fusion");
     app.setWindowIcon(QIcon(":/strata/strata-editor.svg"));
     QCommandLineParser parser;

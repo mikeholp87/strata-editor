@@ -1,6 +1,7 @@
 #pragma once
 #include <QPlainTextEdit>
 class Gutter;
+class QCompleter;
 class CodeEditor : public QPlainTextEdit {
     Q_OBJECT
   public:
@@ -11,7 +12,17 @@ class CodeEditor : public QPlainTextEdit {
     void toggleComment();
     void duplicateLine();
     int tabWidth = 4;
-    bool spaces = true, autoIndent = true, pairs = true, numbers = true;
+    bool spaces = true, autoIndent = true, pairs = true, numbers = true, completion = true;
+    // Word and keyword completion popup. `force` (Ctrl+Space) also accepts short prefixes.
+    void showCompletion(bool force = false);
+    // Markdown source editing. All are no-ops unless the "language" property is Markdown.
+    enum class LineKind { Bullet, Number, Task, Quote };
+    bool isMarkdown() const;
+    void toggleInline(const QString &mark);
+    void setHeading(int level);
+    void toggleLineKind(LineKind kind);
+    void insertLink();
+    void insertCodeBlock();
     void refreshOptions();
 
   protected:
@@ -20,5 +31,9 @@ class CodeEditor : public QPlainTextEdit {
 
   private:
     QWidget *gutter;
+    QCompleter *completer;
     void highlightLine();
+    void handleKey(QKeyEvent *);
+    bool continueMarkdownLine();
+    void insertCompletion(const QString &text);
 };

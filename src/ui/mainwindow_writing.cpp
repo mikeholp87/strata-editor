@@ -18,7 +18,13 @@ void MainWindow::buildFormatBar() {
     formatBar->setObjectName("formatBar");
     formatBar->setMovable(false);
     auto format = [this](QString id, QString name, QKeySequence key, auto fn) {
-        auto a = command(id, name, key, [this, fn] {
+        auto a = command(id, name, key, [this, fn, id] {
+            if (auto v = current(); v && v->code && v->activeCode()->isMarkdown() && !v->isReadOnly()) {
+                if (v->markdownView() == DocumentView::MarkdownView::Preview)
+                    v->setMarkdownView(DocumentView::MarkdownView::Split);
+                v->activeCode()->toggleInline(id == "formatBold" ? "**" : id == "formatItalic" ? "*" : "~~");
+                return;
+            }
             if (!current() || !current()->rich || current()->isReadOnly())
                 return;
             auto c = current()->cursor();
@@ -143,6 +149,12 @@ void MainWindow::buildFormatBar() {
     });
     format("formatRule", tr("Rule"), {}, [](QTextCursor &c) { c.insertHtml("<hr>"); });
     format("formatTable", tr("Table"), {}, [](QTextCursor &c) { c.insertTable(3, 3); });
+    markdownBar = addToolBar(tr("Markdown formatting"));
+    markdownBar->setObjectName("markdownBar");
+    markdownBar->setMovable(false);
+    for (auto id : {"formatBold", "formatItalic", "formatStrike", "mdCode", "mdHeading1", "mdHeading2",
+                    "mdHeading3", "mdBullets", "mdNumbers", "mdTasks", "mdQuote", "mdLink", "mdCodeBlock"})
+        markdownBar->addAction(findChild<QAction *>(id));
 }
 void MainWindow::findNext(bool backwards) {
     auto v = current();

@@ -5,7 +5,7 @@
 
 A native **C++20 / Qt 6** desktop editor for plain text, source code, Markdown and formatted HTML. Keep code and writing in one workspace, with shared-document splits, a live Markdown preview and local recovery.
 
-**0.1.1 preview:** the editing baseline is implemented, including configurable keyboard shortcuts and Source / Split / Preview modes. Advanced IDE features and large-file support remain on the [roadmap](docs/ROADMAP.md).
+**0.1.2 preview:** the editing baseline is implemented, including configurable keyboard shortcuts and Source / Split / Preview modes. Advanced IDE features and large-file support remain on the [roadmap](docs/ROADMAP.md).
 
 [Project website](https://mikeholp87.github.io/strata-editor/) · [User guide](docs/USER_GUIDE.md) · [Build instructions](docs/BUILDING.md) · [Exact feature boundaries](docs/FEATURES.md)
 
@@ -20,9 +20,9 @@ No telemetry, accounts, cloud services or Python/Node runtime. Editing works off
 
 | Area | Implemented in this preview |
 | --- | --- |
-| Text and code | Draggable document tabs, line numbers, current-line highlighting, undo/redo, indentation, bracket pairing, auto-indent, comments, line duplication, whitespace trimming and go to line/column. |
+| Text and code | Draggable document tabs, line numbers, current-line highlighting, undo/redo, indentation, bracket pairing, auto-indent, word and keyword autocomplete, comments, line duplication, whitespace trimming and go to line/column. |
 | Split views | Side-by-side or stacked views of the same document, with independent cursors and a shared undo history. |
-| Markdown | Debounced rendering, visible Source / Split / Preview controls, a padded reading column, remembered view mode and HTML/PDF export. Finding or editing from Preview reveals the source. |
+| Markdown | Debounced rendering, visible Source / Split / Preview controls, a padded reading column, remembered view mode and HTML/PDF export. Source editing has bold, italic, strike, inline code, headings, bullet, numbered and task lists, quotes, links and code blocks (Markdown menu and toolbar), and Enter continues lists and quotes. Finding or editing from Preview reveals the source. |
 | Formatted HTML | A dedicated visual editor with bold, italic, underline, headings, fonts, colors, lists, links, alignment and tables. Uses Qt’s supported HTML subset. |
 | Find and replace | Find with expandable replacement controls; case-sensitive, whole-word and regular-expression options. Replace all is one undo transaction. |
 | Project navigation | Read-only explorer, recent files/folders, fuzzy command palette, quick open from the loaded project tree and cancellable project search. |
@@ -148,6 +148,9 @@ These are the default bindings; change registered commands in **Tools → Keyboa
 | Project search | `Ctrl+Shift+F` |
 | Go to line and column | `Ctrl+G` |
 | Duplicate line / toggle comment | `Ctrl+D` / `Ctrl+/` |
+| Show completions | `Ctrl+Space` (also pops up while typing after 3 characters; `Tab` or `Enter` accepts, `Esc` dismisses) |
+| Markdown bold / italic / inline code / link | `Ctrl+B` / `Ctrl+I` / `Ctrl+E` / `Ctrl+Alt+K` |
+| Markdown headings 1–3 | `Ctrl+Alt+1` / `Ctrl+Alt+2` / `Ctrl+Alt+3` |
 | Next document | `Ctrl+Tab` |
 | Print | `Ctrl+Alt+P` |
 | Preferences / focus mode | `Ctrl+,` / `F11` |
@@ -166,7 +169,7 @@ See [security notes](SECURITY.md) and the [user guide](docs/USER_GUIDE.md) befor
 ## Current limits
 
 - Files larger than **8 MiB** are refused; there is no streaming large-file viewer.
-- Syntax highlighting is lexical. LSP, Tree-sitter, folding, multiple cursors, spellcheck and extensions are not implemented.
+- Autocomplete suggests words from the open file plus a short keyword list for the detected language; it is not semantic. Syntax highlighting is lexical. LSP, Tree-sitter, folding, multiple cursors, spellcheck and extensions are not implemented.
 - Quick open sees entries currently loaded by the explorer, not a complete project index.
 - Project search is literal and case insensitive, skips files over **2 MiB** and NUL-containing files, excludes `.git`, `node_modules` and `build`, and stops at **1,000 matches**. Ignore-file parsing and multi-file replacement are not implemented.
 - Regex replacement inserts literal text; capture expansion and search-in-selection are not supported.

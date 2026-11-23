@@ -425,9 +425,18 @@ void MainWindow::updateUi() {
     auto v = current();
     if (formatBar)
         formatBar->setVisible(!focusMode && v && v->rich);
-    for (auto action : commands)
-        if (action->objectName().startsWith("format"))
+    const bool markdownSource = v && v->code && v->activeCode()->isMarkdown();
+    if (markdownBar)
+        markdownBar->setVisible(!focusMode && markdownSource);
+    for (auto action : commands) {
+        const auto id = action->objectName();
+        if (id == "formatBold" || id == "formatItalic" || id == "formatStrike")
+            action->setEnabled(v && (v->rich || markdownSource));
+        else if (id.startsWith("format"))
             action->setEnabled(v && v->rich);
+        else if (id.startsWith("md"))
+            action->setEnabled(markdownSource);
+    }
     if (!v) {
         cursorStatus->clear();
         documentStatus->clear();

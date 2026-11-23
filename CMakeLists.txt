@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(StrataEditor VERSION 0.1.1 LANGUAGES CXX)
+project(StrataEditor VERSION 0.1.2 LANGUAGES CXX)
 set(STRATA_PRODUCT_NAME "Strata Editor" CACHE STRING "Application display name")
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -8,7 +8,7 @@ set(CMAKE_AUTORCC ON)
 find_package(Qt6 6.4 REQUIRED COMPONENTS Widgets Concurrent PrintSupport)
 add_library(strata STATIC
  src/core/document.cpp src/core/recovery.cpp src/core/persistence.cpp src/core/export.cpp src/core/shortcuts.cpp
- src/editor/codeeditor.cpp src/editor/highlighter.cpp
+ src/editor/codeeditor.cpp src/editor/codeeditor_markdown.cpp src/editor/completion.cpp src/editor/highlighter.cpp
  src/ui/documentview.cpp src/ui/mainwindow.cpp src/ui/projectsearch.cpp src/ui/gitpanel.cpp
  src/ui/mainwindow_commands.cpp src/ui/mainwindow_writing.cpp
  src/ui/mainwindow_session.cpp src/ui/mainwindow_navigation.cpp src/ui/shortcutdialog.cpp src/ui/windowstate.cpp)
@@ -42,6 +42,10 @@ if(BUILD_TESTING)
  target_link_libraries(strata-hardening-tests PRIVATE strata Qt6::Test)
  target_compile_definitions(strata-hardening-tests PRIVATE STRATA_FAKE_GIT_PATH="$<TARGET_FILE:strata-fake-git>")
  add_dependencies(strata-hardening-tests strata-fake-git)
+ add_executable(strata-editing-tests tests/test_editing.cpp)
+ target_link_libraries(strata-editing-tests PRIVATE strata Qt6::Test)
+ add_test(NAME strata-editing COMMAND strata-editing-tests)
+ set_tests_properties(strata-editing PROPERTIES TIMEOUT 45 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
  add_executable(strata-usability-tests tests/test_usability.cpp resources/resources.qrc)
  target_link_libraries(strata-usability-tests PRIVATE strata Qt6::Test)
  add_test(NAME strata-usability COMMAND strata-usability-tests)
