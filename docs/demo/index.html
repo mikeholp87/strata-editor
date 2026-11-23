@@ -1,0 +1,845 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Try Strata Editor: Interactive Markdown Editor Demo</title>
+    <meta
+      name="description"
+      content="Try a Strata Editor workspace in your browser: a project explorer, Markdown source, split view with live preview, tabs and a command palette, using sample files."
+    />
+    <link rel="canonical" href="https://mikeholp87.github.io/strata-editor/demo/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Try Strata Editor in your browser" />
+    <meta property="og:url" content="https://mikeholp87.github.io/strata-editor/demo/" />
+    <style>
+      :root {
+        color-scheme: light dark;
+        --page: #eef1f6;
+        --ink: #18212d;
+        --muted: #4d586a;
+        --blue: #2f5fd0;
+        --on-blue: #fff;
+        --line: #d3d9e4;
+        --warn-bg: #fff4d6;
+        --warn-ink: #5c4200;
+        font-family: Inter, "Segoe UI", system-ui, sans-serif;
+        background: var(--page);
+        color: var(--ink);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --page: #0c1016;
+          --ink: #e8eef5;
+          --muted: #a3afc0;
+          --blue: #7aa2ff;
+          --on-blue: #0c1016;
+          --line: #263041;
+          --warn-bg: #2d2610;
+          --warn-ink: #f4d98a;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        line-height: 1.5;
+      }
+      a {
+        color: var(--blue);
+      }
+      .top {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 14px 16px 6px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 20px;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .top nav {
+        display: flex;
+        gap: 16px;
+        font-size: 15px;
+      }
+      .notice {
+        max-width: 1148px;
+        margin: 0 auto 10px;
+        padding: 10px 16px;
+        border-radius: 10px;
+        background: var(--warn-bg);
+        color: var(--warn-ink);
+        font-size: 14px;
+      }
+      h1 {
+        max-width: 1180px;
+        margin: 6px auto 4px;
+        padding: 0 16px;
+        font-size: clamp(24px, 3.5vw, 34px);
+        letter-spacing: -0.02em;
+      }
+      .lede {
+        max-width: 1180px;
+        margin: 0 auto 12px;
+        padding: 0 16px;
+        color: var(--muted);
+      }
+
+      /* The window */
+      .app {
+        --bg: #10151d;
+        --panel: #151b25;
+        --ink2: #e8eef5;
+        --dim: #8c9ab0;
+        --edge: #263041;
+        --accent: #3d8bff;
+        --sel: #1d2a40;
+        --code: #6bd1a5;
+        --head: #4aa3ff;
+        --bold: #f0b45a;
+        --prev-bg: #121823;
+        --prev-ink: #e8eef5;
+        max-width: 1148px;
+        margin: 0 16px;
+        margin-inline: auto;
+        height: min(640px, 78vh);
+        min-height: 460px;
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr) auto;
+        background: var(--bg);
+        color: var(--ink2);
+        border: 1px solid var(--edge);
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 30px 70px -30px rgba(0, 0, 0, 0.55);
+        font-size: 14px;
+      }
+      @media (max-width: 1180px) {
+        .app {
+          margin-inline: 16px;
+        }
+      }
+      .app.light {
+        --bg: #e8eef5;
+        --panel: #f4f7fb;
+        --ink2: #18212d;
+        --dim: #5d6a7d;
+        --edge: #c8d1de;
+        --accent: #2f6fd6;
+        --sel: #d6e4f8;
+        --code: #0c7a52;
+        --head: #1458b8;
+        --bold: #8a5200;
+        --prev-bg: #fff;
+        --prev-ink: #18212d;
+      }
+      .menu,
+      .tool {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2px;
+        padding: 4px 8px;
+        background: var(--bg);
+      }
+      .tool {
+        border-bottom: 1px solid var(--edge);
+        padding: 6px 12px;
+      }
+      .app button {
+        font: inherit;
+        color: inherit;
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 5px;
+        padding: 4px 10px;
+        cursor: pointer;
+      }
+      .app button:hover {
+        background: var(--sel);
+      }
+      .app button[aria-pressed="true"] {
+        background: var(--sel);
+        border-color: var(--edge);
+      }
+      .grow {
+        margin-left: auto;
+      }
+      .body {
+        display: grid;
+        grid-template-columns: 210px minmax(0, 1fr);
+        min-height: 0;
+      }
+      @media (max-width: 700px) {
+        .body {
+          grid-template-columns: 120px minmax(0, 1fr);
+        }
+      }
+      .side {
+        background: var(--panel);
+        border-right: 1px solid var(--edge);
+        overflow: auto;
+        padding: 6px 0;
+      }
+      .side h2 {
+        margin: 4px 12px 6px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--dim);
+      }
+      .side ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      .side li button {
+        display: block;
+        width: 100%;
+        text-align: left;
+        border-radius: 0;
+        padding: 3px 12px 3px calc(12px + var(--d, 0) * 14px);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .side li button.on {
+        background: var(--sel);
+      }
+      .main {
+        display: grid;
+        grid-template-rows: auto auto minmax(0, 1fr);
+        min-width: 0;
+        min-height: 0;
+      }
+      .tabs {
+        display: flex;
+        gap: 2px;
+        padding: 6px 10px 0;
+        overflow-x: auto;
+        border-bottom: 1px solid var(--edge);
+      }
+      .tab {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 4px 6px 12px;
+        border-bottom: 2px solid transparent;
+        color: var(--dim);
+        white-space: nowrap;
+      }
+      .tab.on {
+        color: var(--ink2);
+        border-bottom-color: var(--accent);
+      }
+      .tab button.x {
+        padding: 0 6px;
+        line-height: 1.3;
+        color: var(--dim);
+      }
+      .tab .name {
+        background: none;
+        border: 0;
+        padding: 0;
+      }
+      .modes {
+        display: flex;
+        gap: 6px;
+        padding: 8px 12px;
+      }
+      .modes button {
+        border-color: var(--edge);
+        background: var(--panel);
+      }
+      .panes {
+        display: grid;
+        min-height: 0;
+        border-top: 1px solid var(--edge);
+      }
+      .panes.split {
+        grid-template-columns: 1fr 1fr;
+      }
+      .panes > * {
+        min-width: 0;
+        min-height: 0;
+      }
+      .ed {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        background: var(--bg);
+        min-height: 0;
+        overflow: hidden;
+      }
+      .gut {
+        padding: 8px 8px 8px 12px;
+        text-align: right;
+        color: var(--dim);
+        font: 13.5px/1.55 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        overflow: hidden;
+        user-select: none;
+        white-space: pre;
+      }
+      .ed textarea {
+        width: 100%;
+        height: 100%;
+        resize: none;
+        border: 0;
+        outline: 0;
+        padding: 8px 12px 8px 4px;
+        background: transparent;
+        color: var(--ink2);
+        font: 13.5px/1.55 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        tab-size: 4;
+        white-space: pre;
+        overflow: auto;
+      }
+      .prev {
+        background: var(--prev-bg);
+        color: var(--prev-ink);
+        overflow: auto;
+        padding: 12px 22px 24px;
+        border-left: 1px solid var(--edge);
+        line-height: 1.7;
+      }
+      .panes:not(.split) .prev {
+        border-left: 0;
+      }
+      .prev h1,
+      .prev h2,
+      .prev h3 {
+        max-width: none;
+        margin: 0.7em 0 0.4em;
+        padding: 0;
+        line-height: 1.25;
+        letter-spacing: 0;
+      }
+      .prev h1 {
+        font-size: 28px;
+      }
+      .prev h2 {
+        font-size: 22px;
+      }
+      .prev h3 {
+        font-size: 18px;
+      }
+      .prev p {
+        margin: 0.5em 0;
+      }
+      .prev code {
+        font-family: ui-monospace, Menlo, Consolas, monospace;
+        background: rgba(128, 140, 160, 0.2);
+        padding: 1px 5px;
+        border-radius: 4px;
+        font-size: 0.92em;
+      }
+      .prev pre {
+        background: rgba(128, 140, 160, 0.16);
+        padding: 10px 12px;
+        border-radius: 6px;
+        overflow: auto;
+      }
+      .prev pre code {
+        background: none;
+        padding: 0;
+      }
+      .prev blockquote {
+        margin: 0.6em 0;
+        padding: 0 14px;
+        border-left: 3px solid var(--accent);
+        color: var(--dim);
+      }
+      .prev table {
+        border-collapse: collapse;
+        margin: 0.6em 0;
+      }
+      .prev th,
+      .prev td {
+        border: 1px solid var(--edge);
+        padding: 5px 12px;
+        text-align: left;
+      }
+      .status {
+        display: flex;
+        gap: 16px;
+        justify-content: flex-end;
+        padding: 4px 12px;
+        font-size: 12.5px;
+        color: var(--dim);
+        background: var(--bg);
+        border-top: 1px solid var(--edge);
+      }
+      .status .msg {
+        margin-right: auto;
+      }
+      .palette {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.45);
+        display: none;
+        place-items: start center;
+        padding-top: 14vh;
+        z-index: 10;
+      }
+      .palette.open {
+        display: grid;
+      }
+      .pbox {
+        width: min(560px, 92vw);
+        background: #151b25;
+        color: #e8eef5;
+        border: 1px solid #263041;
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      .pbox input {
+        width: 100%;
+        padding: 12px 14px;
+        border: 0;
+        border-bottom: 1px solid #263041;
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        font-size: 16px;
+        outline: 0;
+      }
+      .pbox ul {
+        list-style: none;
+        margin: 0;
+        padding: 6px;
+        max-height: 280px;
+        overflow: auto;
+      }
+      .pbox li {
+        padding: 8px 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .pbox li[aria-selected="true"] {
+        background: #1d2a40;
+      }
+      .pbox li span {
+        color: #8c9ab0;
+        font-size: 12.5px;
+      }
+      .cta {
+        max-width: 1148px;
+        margin: 18px auto 40px;
+        padding: 0 16px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      .cta a {
+        padding: 10px 18px;
+        border-radius: 10px;
+        font-weight: 650;
+        text-decoration: none;
+        background: var(--blue);
+        color: var(--on-blue);
+      }
+      .cta a.secondary {
+        background: transparent;
+        color: var(--blue);
+        border: 1px solid var(--blue);
+      }
+      .hint {
+        max-width: 1148px;
+        margin: 12px auto 0;
+        padding: 0 16px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+      kbd {
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 12.5px;
+        padding: 1px 5px;
+        border-radius: 5px;
+        border: 1px solid var(--line);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="top">
+      <strong>Strata Editor</strong>
+      <nav aria-label="Demo navigation">
+        <a href="../">Overview</a>
+        <a href="../#install">Install</a>
+        <a href="https://github.com/mikeholp87/strata-editor">GitHub</a>
+      </nav>
+    </div>
+    <div class="notice" role="note">
+      This is a browser demo with sample files. It is a simplified model of the native Qt app. Edits stay in this browser tab (and your local storage) and never leave your computer.
+    </div>
+    <h1>Try a Strata workspace</h1>
+    <p class="lede">Edit the Markdown on the left and watch the preview follow. Open other files from the explorer, switch between Source, Split and Preview, or press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> for commands.</p>
+
+    <div class="app" id="app" role="application" aria-label="Strata Editor demo">
+      <div class="menu" role="toolbar" aria-label="Menu">
+        <button type="button" data-cmd="new">New</button>
+        <button type="button" data-cmd="save">Save</button>
+        <button type="button" data-cmd="theme">Theme</button>
+        <button type="button" class="grow" data-cmd="palette">Commands</button>
+      </div>
+      <div class="body">
+        <nav class="side" aria-label="Project explorer">
+          <h2>strata-editor</h2>
+          <ul id="tree"></ul>
+        </nav>
+        <div class="main">
+          <div class="tabs" id="tabs" role="tablist"></div>
+          <div class="modes" role="group" aria-label="View mode">
+            <button type="button" data-mode="source" aria-pressed="false">Source</button>
+            <button type="button" data-mode="split" aria-pressed="true">Split</button>
+            <button type="button" data-mode="preview" aria-pressed="false">Preview</button>
+          </div>
+          <div class="panes split" id="panes">
+            <div class="ed" id="ed">
+              <div class="gut" id="gut" aria-hidden="true"></div>
+              <textarea id="ta" spellcheck="false" aria-label="Editor"></textarea>
+            </div>
+            <div class="prev" id="prev" aria-label="Preview"></div>
+          </div>
+        </div>
+      </div>
+      <div class="status"><span class="msg" id="msg" role="status" aria-live="polite"></span><span id="pos">Ln 1, Col 1</span><span id="kind">Markdown</span><span>UTF-8</span><span>LF</span></div>
+    </div>
+    <p class="hint">Shortcuts: <kbd>Ctrl</kbd>+<kbd>S</kbd> save, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> commands. Your browser keeps Ctrl+N and Ctrl+W, so use the New button and the tab close buttons here.</p>
+    <div class="cta">
+      <a href="../#install">Install Strata Editor on Linux</a>
+      <a class="secondary" href="../">Back to the overview</a>
+    </div>
+
+    <div class="palette" id="palette" role="dialog" aria-label="Command palette" aria-modal="true">
+      <div class="pbox">
+        <input id="pq" type="text" placeholder="Type a command…" aria-label="Command" autocomplete="off" />
+        <ul id="pl" role="listbox"></ul>
+      </div>
+    </div>
+
+    <script>
+      "use strict";
+      const WELCOME = `# A little room to think
+
+Welcome to **Strata Editor** — a native workspace for code and words.
+
+## One document, two perspectives
+
+Edit Markdown here. The preview follows after a short pause.
+Your original source stays intact.
+
+- Open a project folder
+- Find a command with \`Ctrl+Shift+P\`
+- Split a document into two views
+- Save with \`Ctrl+S\`
+
+## Built for everyday work
+
+| Mode | Use it for |
+| --- | --- |
+| Source | Code, configuration, plain text |
+| Markdown | Notes and documentation |
+| Rich HTML | Formatted writing |
+
+> Good tools leave space for the work.
+
+\`\`\`cpp
+const auto idea = "Make something useful.";
+\`\`\`
+`;
+      const FILES = {
+        "WELCOME.md": WELCOME,
+        "README.md": "# Strata Editor\n\nA native C++20 and Qt 6 editor for text, code, Markdown and HTML.\n\n## Features\n\n- Project explorer and tabs\n- Split views with a live Markdown preview\n- Custom shortcuts and a command palette\n- Local recovery after a crash\n\nTry editing this file and switch to **Preview**.\n",
+        "docs/notes.md": "# Meeting notes\n\n## Agenda\n\n1. Release checklist\n2. Packaging for Debian and Ubuntu\n3. Next milestone\n\n## Decisions\n\n- Ship the *signed* APT repository first\n- Keep the editor **offline** and free of telemetry\n\n> Write it down, then move on.\n",
+        "src/main.cpp": '#include <QApplication>\n#include "ui/mainwindow.h"\n\nint main(int argc, char **argv) {\n    QApplication app(argc, argv);\n    MainWindow window;\n    window.show();\n    return app.exec();\n}\n',
+        "CMakeLists.txt": "cmake_minimum_required(VERSION 3.22)\nproject(strata-editor LANGUAGES CXX)\n\nset(CMAKE_CXX_STANDARD 20)\nfind_package(Qt6 REQUIRED COMPONENTS Widgets)\n\nadd_executable(strata src/main.cpp)\ntarget_link_libraries(strata PRIVATE Qt6::Widgets)\n",
+        LICENSE: "MIT License\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of this software.\n",
+      };
+      const isMd = (n) => /\.md$/i.test(n);
+      let store = {};
+      try {
+        store = JSON.parse(localStorage.getItem("strata-demo") || "{}") || {};
+      } catch {}
+      const docs = {};
+      for (const [n, t] of Object.entries(FILES)) docs[n] = typeof store[n] === "string" ? store[n] : t;
+      const persist = () => {
+        try {
+          localStorage.setItem("strata-demo", JSON.stringify(docs));
+        } catch {}
+      };
+
+      const $ = (id) => document.getElementById(id);
+      const ta = $("ta");
+      const state = { tabs: ["WELCOME.md"], active: "WELCOME.md", mode: "split", dirty: new Set() };
+      let untitled = 0;
+
+      const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const inline = (s) =>
+        esc(s)
+          .replace(/`([^`]+)`/g, "<code>$1</code>")
+          .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+          .replace(/(^|[^*])\*([^*\s][^*]*)\*/g, "$1<em>$2</em>")
+          .replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" rel="noopener noreferrer">$1</a>');
+
+      function markdown(src) {
+        const lines = src.replace(/\r/g, "").split("\n");
+        const out = [];
+        let i = 0;
+        while (i < lines.length) {
+          const l = lines[i];
+          if (/^```/.test(l)) {
+            const code = [];
+            i++;
+            while (i < lines.length && !/^```/.test(lines[i])) code.push(lines[i++]);
+            i++;
+            out.push("<pre><code>" + esc(code.join("\n")) + "</code></pre>");
+          } else if (/^#{1,3} /.test(l)) {
+            const n = l.match(/^#+/)[0].length;
+            out.push(`<h${n}>${inline(l.slice(n + 1))}</h${n}>`);
+            i++;
+          } else if (/^\|.*\|\s*$/.test(l) && /^\|[\s:|-]+\|\s*$/.test(lines[i + 1] || "")) {
+            const cells = (r) => r.trim().replace(/^\||\|$/g, "").split("|").map((c) => inline(c.trim()));
+            let t = "<table><thead><tr>" + cells(l).map((c) => `<th>${c}</th>`).join("") + "</tr></thead><tbody>";
+            i += 2;
+            while (i < lines.length && /^\|.*\|\s*$/.test(lines[i])) t += "<tr>" + cells(lines[i++]).map((c) => `<td>${c}</td>`).join("") + "</tr>";
+            out.push(t + "</tbody></table>");
+          } else if (/^\s*([-*]|\d+\.) /.test(l)) {
+            const ordered = /^\s*\d+\./.test(l);
+            const tag = ordered ? "ol" : "ul";
+            let t = `<${tag}>`;
+            while (i < lines.length && /^\s*([-*]|\d+\.) /.test(lines[i])) t += "<li>" + inline(lines[i++].replace(/^\s*([-*]|\d+\.) /, "")) + "</li>";
+            out.push(t + `</${tag}>`);
+          } else if (/^> ?/.test(l)) {
+            const q = [];
+            while (i < lines.length && /^> ?/.test(lines[i])) q.push(lines[i++].replace(/^> ?/, ""));
+            out.push("<blockquote>" + inline(q.join(" ")) + "</blockquote>");
+          } else if (!l.trim()) {
+            i++;
+          } else {
+            const p = [];
+            while (i < lines.length && lines[i].trim() && !/^(#{1,3} |```|> |\s*([-*]|\d+\.) |\|)/.test(lines[i])) p.push(lines[i++]);
+            if (!p.length) p.push(lines[i++]);
+            out.push("<p>" + inline(p.join(" ")) + "</p>");
+          }
+        }
+        return out.join("\n");
+      }
+
+      function renderTree() {
+        const names = Object.keys(docs).sort((a, b) => (a.includes("/") === b.includes("/") ? a.localeCompare(b) : a.includes("/") ? -1 : 1));
+        const ul = $("tree");
+        ul.innerHTML = "";
+        let lastDir = "";
+        for (const n of names) {
+          const [dir, base] = n.includes("/") ? n.split("/") : ["", n];
+          if (dir && dir !== lastDir) {
+            const li = document.createElement("li");
+            const b = document.createElement("button");
+            b.type = "button";
+            b.disabled = true;
+            b.textContent = "▾ " + dir;
+            li.append(b);
+            ul.append(li);
+            lastDir = dir;
+          }
+          const li = document.createElement("li");
+          const b = document.createElement("button");
+          b.type = "button";
+          b.style.setProperty("--d", dir ? 1 : 0);
+          b.className = n === state.active ? "on" : "";
+          b.textContent = base;
+          b.addEventListener("click", () => openFile(n));
+          li.append(b);
+          ul.append(li);
+        }
+      }
+
+      function renderTabs() {
+        const t = $("tabs");
+        t.innerHTML = "";
+        for (const n of state.tabs) {
+          const d = document.createElement("div");
+          d.className = "tab" + (n === state.active ? " on" : "");
+          d.setAttribute("role", "tab");
+          d.setAttribute("aria-selected", String(n === state.active));
+          const name = document.createElement("button");
+          name.type = "button";
+          name.className = "name";
+          name.textContent = n.split("/").pop() + (state.dirty.has(n) ? " •" : "");
+          name.addEventListener("click", () => openFile(n));
+          const x = document.createElement("button");
+          x.type = "button";
+          x.className = "x";
+          x.setAttribute("aria-label", "Close " + n);
+          x.textContent = "×";
+          x.addEventListener("click", () => closeTab(n));
+          d.append(name, x);
+          t.append(d);
+        }
+      }
+
+      function renderPanes() {
+        const md = isMd(state.active);
+        const mode = md ? state.mode : "source";
+        $("panes").className = "panes" + (mode === "split" ? " split" : "");
+        $("ed").style.display = mode === "preview" ? "none" : "";
+        $("prev").style.display = mode === "source" ? "none" : "";
+        document.querySelectorAll("[data-mode]").forEach((b) => {
+          b.setAttribute("aria-pressed", String(b.dataset.mode === state.mode));
+          b.disabled = !md;
+        });
+        $("kind").textContent = md ? "Markdown" : /\.(cpp|h)$/.test(state.active) ? "C++" : "Plain text";
+      }
+
+      function renderText() {
+        const v = docs[state.active] ?? "";
+        if (ta.value !== v) ta.value = v;
+        gutter();
+        if (isMd(state.active)) $("prev").innerHTML = markdown(v);
+      }
+      function gutter() {
+        const n = ta.value.split("\n").length;
+        $("gut").textContent = Array.from({ length: n }, (_, i) => i + 1).join("\n");
+        $("gut").scrollTop = ta.scrollTop;
+      }
+      function renderAll() {
+        renderTree();
+        renderTabs();
+        renderPanes();
+        renderText();
+        caret();
+      }
+      function caret() {
+        const before = ta.value.slice(0, ta.selectionStart);
+        const ln = before.split("\n").length;
+        $("pos").textContent = `Ln ${ln}, Col ${before.length - before.lastIndexOf("\n")}`;
+      }
+      function say(m) {
+        $("msg").textContent = m;
+        clearTimeout(say.t);
+        say.t = setTimeout(() => ($("msg").textContent = ""), 3500);
+      }
+
+      function openFile(n) {
+        if (!state.tabs.includes(n)) state.tabs.push(n);
+        state.active = n;
+        renderAll();
+        ta.focus({ preventScroll: true });
+      }
+      function closeTab(n) {
+        const i = state.tabs.indexOf(n);
+        state.tabs.splice(i, 1);
+        state.dirty.delete(n);
+        if (!state.tabs.length) state.tabs.push("WELCOME.md");
+        if (state.active === n) state.active = state.tabs[Math.max(0, i - 1)];
+        renderAll();
+      }
+      function newDoc() {
+        let n;
+        do n = `untitled-${++untitled}.md`;
+        while (docs[n] !== undefined);
+        docs[n] = "# Untitled\n\nStart typing…\n";
+        openFile(n);
+      }
+      function save() {
+        state.dirty.delete(state.active);
+        persist();
+        renderTabs();
+        say("Saved " + state.active + " to this browser. The real app writes the file to disk.");
+      }
+      const toggleTheme = () => $("app").classList.toggle("light");
+      const setMode = (m) => {
+        state.mode = m;
+        renderPanes();
+      };
+
+      ta.addEventListener("input", () => {
+        docs[state.active] = ta.value;
+        state.dirty.add(state.active);
+        gutter();
+        if (isMd(state.active)) {
+          clearTimeout(ta.t);
+          ta.t = setTimeout(() => ($("prev").innerHTML = markdown(ta.value)), 120);
+        }
+        renderTabs();
+        caret();
+      });
+      ta.addEventListener("scroll", () => ($("gut").scrollTop = ta.scrollTop));
+      for (const ev of ["keyup", "click", "focus"]) ta.addEventListener(ev, caret);
+      document.querySelectorAll("[data-mode]").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
+
+      const COMMANDS = [
+        ["New document", "", newDoc],
+        ["Save", "Ctrl+S", save],
+        ["Close tab", "", () => closeTab(state.active)],
+        ["View: Source", "", () => setMode("source")],
+        ["View: Split", "", () => setMode("split")],
+        ["View: Preview", "", () => setMode("preview")],
+        ["Toggle light and dark theme", "", toggleTheme],
+        ["Open WELCOME.md", "", () => openFile("WELCOME.md")],
+        ["Reset demo files", "", () => {
+          localStorage.removeItem("strata-demo");
+          location.reload();
+        }],
+      ];
+      let psel = 0;
+      let plist = COMMANDS;
+      function renderPalette() {
+        const q = $("pq").value.trim().toLowerCase();
+        plist = COMMANDS.filter(([n]) => !q || n.toLowerCase().includes(q) || [...q].every((c) => n.toLowerCase().includes(c)));
+        psel = Math.min(psel, Math.max(plist.length - 1, 0));
+        const ul = $("pl");
+        ul.innerHTML = "";
+        plist.forEach(([n, k], i) => {
+          const li = document.createElement("li");
+          li.setAttribute("role", "option");
+          li.setAttribute("aria-selected", String(i === psel));
+          li.innerHTML = `${esc(n)}<span>${esc(k)}</span>`;
+          li.addEventListener("click", () => runPalette(i));
+          ul.append(li);
+        });
+      }
+      function openPalette() {
+        $("palette").classList.add("open");
+        $("pq").value = "";
+        psel = 0;
+        renderPalette();
+        $("pq").focus();
+      }
+      function closePalette() {
+        $("palette").classList.remove("open");
+        ta.focus({ preventScroll: true });
+      }
+      function runPalette(i) {
+        const c = plist[i];
+        closePalette();
+        if (c) c[2]();
+      }
+      $("pq").addEventListener("input", () => {
+        psel = 0;
+        renderPalette();
+      });
+      $("pq").addEventListener("keydown", (e) => {
+        if (e.key === "ArrowDown") (e.preventDefault(), (psel = Math.min(psel + 1, plist.length - 1)), renderPalette());
+        else if (e.key === "ArrowUp") (e.preventDefault(), (psel = Math.max(psel - 1, 0)), renderPalette());
+        else if (e.key === "Enter") (e.preventDefault(), runPalette(psel));
+        else if (e.key === "Escape") closePalette();
+      });
+      $("palette").addEventListener("mousedown", (e) => {
+        if (e.target === $("palette")) closePalette();
+      });
+      document.querySelectorAll("[data-cmd]").forEach((b) =>
+        b.addEventListener("click", () => ({ new: newDoc, save, theme: toggleTheme, palette: openPalette })[b.dataset.cmd]()),
+      );
+      document.addEventListener("keydown", (e) => {
+        const k = e.key.toLowerCase();
+        if (e.ctrlKey && e.shiftKey && k === "p") (e.preventDefault(), openPalette());
+        else if (e.ctrlKey && !e.shiftKey && k === "s") (e.preventDefault(), save());
+      });
+
+      renderAll();
+    </script>
+  </body>
+</html>
