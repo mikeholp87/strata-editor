@@ -39,7 +39,7 @@ jobs:
           $p = Start-Process -FilePath $exe -ArgumentList '-v2','-o','behavior.txt,txt' -NoNewWindow -PassThru -RedirectStandardOutput stdout.txt -RedirectStandardError stderr.txt
           if (-not $p.WaitForExit(120000)) { $p.Kill(); "TIMED OUT after 120 s" }
           "exit code: $($p.ExitCode)"
-          Select-String -Path behavior.txt -Pattern 'FAIL!' -Context 1,6 | ForEach-Object { $_.ToString() }
+          Select-String -Path behavior.txt -Pattern 'FAIL!|DBG' -Context 0,4 | ForEach-Object { $_.ToString() }
       - shell: pwsh
         run: |
           New-Item -ItemType Directory -Force dist

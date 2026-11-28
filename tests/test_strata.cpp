@@ -344,6 +344,15 @@ class StrataTests : public QObject {
         }
         MainWindow second(true);
         QTRY_VERIFY(second.current());
+        QTest::qWait(1500);
+        {
+            QFile sessionFile(Persistence::dataPath("session.json"));
+            sessionFile.open(QIODevice::ReadOnly);
+            qWarning().noquote() << "DBG session.json:" << sessionFile.readAll().left(600);
+            qWarning().noquote() << "DBG files:" << QDir(QFileInfo(sessionFile).absolutePath()).entryList(QDir::Files);
+            auto tabsWidget = second.findChild<QTabWidget *>("documentTabs");
+            qWarning().noquote() << "DBG tabs:" << (tabsWidget ? tabsWidget->count() : -1) << "current path:" << second.current()->model->path();
+        }
         QTRY_COMPARE(second.current()->model->path(), QFileInfo(p).canonicalFilePath());
         QCOMPARE(second.current()->findChildren<CodeEditor *>().size(), 2);
         QCOMPARE(second.current()->code->textCursor().position(), 7);
