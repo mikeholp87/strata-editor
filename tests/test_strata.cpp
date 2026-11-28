@@ -1,6 +1,7 @@
 #include "core/document.h"
 #include "core/export.h"
 #include "core/persistence.h"
+#include "core/recovery.h"
 #include "editor/codeeditor.h"
 #include "editor/highlighter.h"
 #include "ui/documentview.h"
@@ -318,7 +319,12 @@ class StrataTests : public QObject {
     }
     void realSessionRestore() {
         QTemporaryDir dir;
+        // Windows keeps one persistent data directory for every test executable, so snapshots left by
+        // other tests would pop the "Recover documents" prompt and replace the session being restored.
         QFile::remove(Persistence::dataPath("recovery.json"));
+        QFile::remove(Persistence::dataPath("recovery-backup.json"));
+        for (const auto &stale : Recovery::backupPaths(Persistence::dataPath("recovery.json")))
+            QFile::remove(stale);
         auto p = dir.filePath("session.txt");
         {
             QFile f(p);
