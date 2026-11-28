@@ -34,8 +34,12 @@ jobs:
         shell: pwsh
         run: |
           $env:QT_QPA_PLATFORM = 'offscreen'
-          & build/Release/strata-tests.exe -v2 2>&1 | Select-Object -Last 120
-          "strata-tests exit code: $LASTEXITCODE"
+          $exe = (Resolve-Path build/Release/strata-tests.exe).Path
+          "exe: $exe"
+          $p = Start-Process -FilePath $exe -ArgumentList '-v2','-o','behavior.txt,txt' -NoNewWindow -PassThru -RedirectStandardOutput stdout.txt -RedirectStandardError stderr.txt
+          if (-not $p.WaitForExit(120000)) { $p.Kill(); "TIMED OUT after 120 s" }
+          "exit code: $($p.ExitCode)"
+          foreach ($f in 'behavior.txt','stdout.txt','stderr.txt') { "--- $f"; if (Test-Path $f) { Get-Content $f -Tail 60 } else { 'missing' } }
       - shell: pwsh
         run: |
           New-Item -ItemType Directory -Force dist
