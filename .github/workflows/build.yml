@@ -48,7 +48,12 @@ jobs:
           windeployqt --release --no-translations dist/strata-editor.exe
           Copy-Item LICENSE,THIRD_PARTY.md dist/
           $qtLicenses = Join-Path (Split-Path $env:QT_ROOT_DIR -Parent) 'Licenses'
-          if (-not (Test-Path $qtLicenses)) { throw "Qt license notices are missing: $qtLicenses" }
+          if (-not (Test-Path $qtLicenses)) {
+            $qtBase = Split-Path (Split-Path $env:QT_ROOT_DIR -Parent) -Parent
+            Get-ChildItem $qtBase -Depth 2 -Directory | ForEach-Object { $_.FullName }
+            Get-ChildItem $qtBase -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match 'LICENSE|LGPL|COPYING' } | Select-Object -First 15 | ForEach-Object { $_.FullName }
+            throw "Qt license notices are missing: $qtLicenses"
+          }
           Copy-Item -Recurse $qtLicenses dist/Qt-Licenses
           Compress-Archive dist/* strata-editor-windows-preview.zip
           Expand-Archive strata-editor-windows-preview.zip verified-dist
