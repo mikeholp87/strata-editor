@@ -1,5 +1,6 @@
 #include "editor/codeeditor.h"
 #include "editor/completion.h"
+#include "editor/highlighter.h"
 #include <QCompleter>
 #include <QtTest>
 #include <QtWidgets>
@@ -22,6 +23,83 @@ class EditingTests : public QObject {
         e.setPlainText(text);
     }
   private slots:
+    void urlsInStringsAreNotComments_data() {
+        QTest::addColumn<QString>("language");
+        QTest::addColumn<QString>("line");
+        QTest::newRow("js") << "JavaScript" << R"(const u = "https://example.com/a"; // real)";
+        QTest::newRow("json") << "JSON" << R"({"u": "https://example.com/a"})";
+        QTest::newRow("html") << "HTML" << R"(<a href="https://example.com/a">x</a>)";
+        QTest::newRow("python") << "Python" << R"(c = "#fff"  # real)";
+        QTest::newRow("sql") << "SQL" << R"(SELECT '--x' -- real)";
+    }
+    void urlsInStringsAreNotComments() {
+        QFETCH(QString, language);
+        QFETCH(QString, line);
+        QTextDocument doc;
+        doc.setPlainText(line);
+        Highlighter h(&doc, language);
+        h.setLightTheme(false);
+        h.rehighlight();
+        const QColor comment("#93a3b5");
+        QList<QPair<int, int>> comments;
+        for (const auto &f : doc.firstBlock().layout()->formats())
+            if (f.format.foreground().color() == comment)
+                comments.append({f.start, f.length});
+        const int urlAt = int(line.indexOf("//")) >= 0 ? int(line.indexOf("//")) : int(line.indexOf('#'));
+        const bool realComment = line.contains("real");
+        QCOMPARE(comments.size(), realComment ? 1 : 0);
+        if (realComment)
+            QVERIFY(comments[0].first > urlAt);
+    }
+    void blockCommentsSpanLinesAndIgnoreStringsInside() {
+        QTextDocument doc;
+        doc.setPlainText("a = 1; /* one\n// two */ b = \"x\"");
+        Highlighter h(&doc, "C++");
+        h.rehighlight();
+        QCOMPARE(doc.firstBlock().userState(), 1);
+        QCOMPARE(doc.firstBlock().next().userState(), 0);
+    }
+    void commentMarkersFollowTheLanguage_data() {
+        QTest::addColumn<QString>("language");
+        QTest::addColumn<QString>("commented");
+        QTest::newRow("sql") << "SQL" << "-- a\n\n-- b";
+        QTest::newRow("css") << "CSS" << "/* a */\n\n/* b */";
+        QTest::newRow("html") << "HTML" << "<!-- a -->\n\n<!-- b -->";
+        QTest::newRow("python") << "Python" << "# a\n\n# b";
+        QTest::newRow("cpp") << "C++" << "// a\n\n// b";
+    }
+    void commentMarkersFollowTheLanguage() {
+        QFETCH(QString, language);
+        QFETCH(QString, commented);
+        CodeEditor e;
+        e.setProperty("language", language);
+        e.setPlainText("a\n\nb"); // blank lines stay untouched
+        e.selectAll();
+        e.toggleComment();
+        QCOMPARE(e.toPlainText(), commented);
+        e.selectAll();
+        e.toggleComment();
+        QCOMPARE(e.toPlainText(), QString("a\n\nb"));
+    }
+    void completionWindowIsBoundedOnHugeDocuments() {
+        CodeEditor e;
+        e.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&e));
+        QString filler(Completion::window * 3, QChar(0x2e));
+        e.setPlainText("farword " + filler + "\nnear nearby neartext\nnea");
+        auto c = e.textCursor();
+        c.movePosition(QTextCursor::End);
+        e.setTextCursor(c);
+        e.showCompletion(true);
+        auto popup = e.findChild<QCompleter *>()->popup();
+        QVERIFY(popup->isVisible());
+        QStringList shown;
+        for (int i = 0; i < popup->model()->rowCount(); ++i)
+            shown << popup->model()->index(i, 0).data().toString();
+        QVERIFY(shown.contains("nearby"));
+        QVERIFY(!shown.contains("farword")); // outside the scanned window
+        popup->hide();
+    }
     void candidatesSkipTheWordBeingTypedAndAddKeywords() {
         const QString text = "alphabet beta alp gamma_ray alphabet";
         auto words = Completion::candidates(text, 14, 17, "Python"); // "alp" is being typed

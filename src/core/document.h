@@ -47,6 +47,10 @@ class Document : public QObject {
     bool mixed() const {
         return m_mixed;
     }
+    // True for an HTML file this editor did not write: saving it rewrites the markup through Qt.
+    bool foreignHtml() const {
+        return m_foreignHtml;
+    }
     void setNewline(const QString &value);
     bool changedOnDisk() const;
     bool isModified() const {
@@ -66,5 +70,5 @@ class Document : public QObject {
     Mode m_mode;
     QString m_path, m_encoding = "UTF-8", m_newline = "LF", m_savedNewline = "LF";
     QByteArray m_digest;
-    bool m_mixed = false;
+    bool m_mixed = false, m_foreignHtml = false;
 };

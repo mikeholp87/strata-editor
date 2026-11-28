@@ -100,6 +100,7 @@ void Document::apply(const FileData &d) {
     m_newline = d.newline;
     m_savedNewline = m_newline;
     m_mixed = d.mixed;
+    m_foreignHtml = m_mode == Mode::Html && !d.text.trimmed().isEmpty() && !d.text.contains("qrichtext");
     if (m_mode == Mode::Html)
         m_text->setHtml(d.text);
     else
@@ -195,6 +196,7 @@ bool Document::save(const QString &destination, QString *error) {
     m_path = QFileInfo(absolute).canonicalFilePath();
     m_digest = digest(bytes);
     m_mixed = false;
+    m_foreignHtml = false;
     m_savedNewline = m_newline;
     m_text->setModified(false);
     emit metadataChanged();

@@ -7,13 +7,14 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 find_package(Qt6 6.4 REQUIRED COMPONENTS Widgets Concurrent PrintSupport)
 add_library(strata STATIC
- src/core/document.cpp src/core/recovery.cpp src/core/persistence.cpp src/core/export.cpp src/core/shortcuts.cpp
+ src/core/document.cpp src/core/recovery.cpp src/core/persistence.cpp src/core/export.cpp src/core/shortcuts.cpp src/core/instancebridge.cpp
  src/editor/codeeditor.cpp src/editor/codeeditor_markdown.cpp src/editor/completion.cpp src/editor/highlighter.cpp
  src/ui/documentview.cpp src/ui/mainwindow.cpp src/ui/projectsearch.cpp src/ui/gitpanel.cpp
  src/ui/mainwindow_commands.cpp src/ui/mainwindow_writing.cpp
  src/ui/mainwindow_session.cpp src/ui/mainwindow_navigation.cpp src/ui/shortcutdialog.cpp src/ui/windowstate.cpp)
 target_include_directories(strata PUBLIC src)
-target_compile_definitions(strata PUBLIC STRATA_PRODUCT_NAME="${STRATA_PRODUCT_NAME}")
+target_compile_definitions(strata PUBLIC STRATA_PRODUCT_NAME="${STRATA_PRODUCT_NAME}"
+  STRATA_VERSION="${PROJECT_VERSION}")
 target_link_libraries(strata PUBLIC Qt6::Widgets Qt6::Concurrent Qt6::PrintSupport)
 if(MSVC)
  target_compile_options(strata PRIVATE /W4)

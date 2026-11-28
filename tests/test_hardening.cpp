@@ -1,3 +1,5 @@
+#include "core/document.h"
+#include "core/instancebridge.h"
 #include "core/persistence.h"
 #include "core/recovery.h"
 #include "ui/documentview.h"
@@ -47,6 +49,59 @@ class HardeningTests : public QObject {
     }
     void cleanup() {
         qputenv("PATH", originalPath);
+    }
+    void secondLaunchHandsFilesToTheRunningInstance() {
+        QTemporaryDir dir;
+        const auto requests = dir.filePath("open-requests");
+        InstanceBridge bridge(requests);
+        QSignalSpy spy(&bridge, &InstanceBridge::requested);
+        QString error;
+        QVERIFY(InstanceBridge::send(requests, {"relative.txt", "/abs/other.md"}, &error));
+        QTRY_COMPARE(spy.count(), 1);
+        const auto paths = spy.takeFirst().at(0).toStringList();
+        QCOMPARE(paths.size(), 2);
+        QCOMPARE(paths[0], QFileInfo("relative.txt").absoluteFilePath());
+        QCOMPARE(paths[1], QString("/abs/other.md"));
+        QVERIFY(QDir(requests).entryList({"*.request"}, QDir::Files).isEmpty()); // consumed exactly once
+        QVERIFY(InstanceBridge::send(requests, {}, &error)); // a bare launch just asks to be shown
+        QTRY_COMPARE(spy.count(), 1);
+        QVERIFY(spy.takeFirst().at(0).toStringList().isEmpty());
+    }
+    void staleRequestsAreDiscardedNotExecuted() {
+        QTemporaryDir dir;
+        const auto requests = dir.filePath("open-requests");
+        QVERIFY(QDir().mkpath(requests));
+        QFile old(requests + "/old.request");
+        QVERIFY(old.open(QIODevice::WriteOnly));
+        old.write(R"(["/etc/hosts"])");
+        old.flush();
+        QVERIFY(old.setFileTime(QDateTime::currentDateTime().addSecs(-3600), QFileDevice::FileModificationTime));
+        old.close();
+        InstanceBridge bridge(requests);
+        QSignalSpy spy(&bridge, &InstanceBridge::requested);
+        QTest::qWait(100);
+        QCOMPARE(spy.count(), 0);
+        QVERIFY(!QFileInfo::exists(requests + "/old.request"));
+    }
+    void foreignHtmlIsFlaggedUntilSaved() {
+        QTemporaryDir dir;
+        const auto path = dir.filePath("page.html");
+        QFile f(path);
+        QVERIFY(f.open(QIODevice::WriteOnly));
+        f.write("<!DOCTYPE html><html><head><script>var x=1;</script></head><body><p>hi</p></body></html>");
+        f.close();
+        Document doc(Document::Mode::Html);
+        doc.apply(Document::read(path));
+        QVERIFY(doc.foreignHtml());
+        QString error;
+        QVERIFY(doc.save(path, &error));
+        QVERIFY(!doc.foreignHtml());
+        Document again(Document::Mode::Html); // now written by this editor: no warning on later saves
+        again.apply(Document::read(path));
+        QVERIFY(!again.foreignHtml());
+        Document text(Document::Mode::Text);
+        text.apply(Document::read(path));
+        QVERIFY(!text.foreignHtml());
     }
     void recoveryRejectsInvalidStructure() {
         QTemporaryDir dir;

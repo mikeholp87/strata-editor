@@ -49,8 +49,7 @@ const QStringList &keywords(const QString &language) {
 } // namespace
 
 QStringList Completion::candidates(const QString &text, int from, int to, const QString &language) {
-    // ponytail: scans a +/-512 KiB window around the cursor; build an index if this ever matters
-    constexpr int window = 512 * 1024;
+    // ponytail: scans a +/-128 KiB window around the cursor; build an index if this ever matters
     from = qBound(0, from, text.size());
     to = qBound(from, to, text.size());
     const int begin = qMax(0, from - window), end = qMin(int(text.size()), to + window);

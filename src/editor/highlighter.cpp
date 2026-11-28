@@ -61,23 +61,60 @@ void Highlighter::highlightBlock(const QString &s) {
     rule("\"(?:[^\"\\\\]|\\\\.)*\"|\x27(?:[^\x27\\\\]|\\\\.)*\x27", green);
     if (language == "HTML" || language == "CSS")
         rule("</?[A-Za-z][^>]*>|#[0-9a-fA-F]{3,8}\\b", blue);
-    if (language == "Python" || language == "Bash" || language == "YAML" || language == "TOML")
-        rule("#.*$", comment);
-    else if (language == "SQL")
-        rule("--.*$", comment);
-    else {
-        rule("//.*$", comment);
-        int start = previousBlockState() == 1 ? 0 : s.indexOf("/*");
-        setCurrentBlockState(0);
-        while (start >= 0) {
-            int end = s.indexOf("*/", start + (previousBlockState() == 1 && start == 0 ? 0 : 2));
-            if (end < 0) {
-                setFormat(start, s.size() - start, comment);
-                setCurrentBlockState(1);
-                break;
-            }
-            setFormat(start, end - start + 2, comment);
-            start = s.indexOf("/*", end + 2);
+    // Comment markers inside string literals ("https://x", "#fff") are not comments.
+    static const QRegularExpression stringLiteral(QStringLiteral("\"(?:[^\"\\\\]|\\\\.)*\"|'(?:[^'\\\\]|\\\\.)*'"));
+    QList<QPair<int, int>> strings;
+    for (auto it = stringLiteral.globalMatch(s); it.hasNext();) {
+        const auto m = it.next();
+        strings.append({int(m.capturedStart()), int(m.capturedEnd())});
+    }
+    auto outside = [&](const QString &token, int from) {
+        if (token.isEmpty())
+            return -1;
+        for (int i = s.indexOf(token, from); i >= 0; i = s.indexOf(token, i + 1)) {
+            bool inString = false;
+            for (const auto &r : strings)
+                inString |= i >= r.first && i < r.second;
+            if (!inString)
+                return i;
         }
+        return -1;
+    };
+    const bool slashes = language == "C" || language == "C++" || language == "Rust" ||
+                         language == "JavaScript" || language == "TypeScript";
+    const QString marker = (language == "Python" || language == "Bash" || language == "YAML" ||
+                            language == "TOML")
+                               ? "#"
+                           : language == "SQL" ? "--"
+                           : slashes           ? "//"
+                                               : QString();
+    const QString open = (slashes || language == "CSS" || language == "SQL") ? "/*"
+                         : language == "HTML"                              ? "<!--"
+                                                                           : QString();
+    const QString close = open == "/*" ? "*/" : "-->";
+    setCurrentBlockState(0);
+    // Walk left to right so a "//" inside a block comment (or "/*" after "//") is not misread.
+    int i = 0;
+    auto block = [&](int start, int searchFrom) { // returns where scanning resumes, or -1
+        const int end = s.indexOf(close, searchFrom);
+        if (end < 0) {
+            setFormat(start, s.size() - start, comment);
+            setCurrentBlockState(1);
+            return -1;
+        }
+        setFormat(start, end + close.size() - start, comment);
+        return int(end + close.size());
+    };
+    if (previousBlockState() == 1)
+        i = block(0, 0);
+    while (i >= 0 && i <= s.size()) {
+        const int line = outside(marker, i), start = outside(open, i);
+        if (line >= 0 && (start < 0 || line < start)) {
+            setFormat(line, s.size() - line, comment);
+            break;
+        }
+        if (start < 0)
+            break;
+        i = block(start, start + open.size());
     }
 }

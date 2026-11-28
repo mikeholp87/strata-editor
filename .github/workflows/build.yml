@@ -29,6 +29,13 @@ jobs:
       - run: cmake -S . -B build -A x64
       - run: cmake --build build --config Release --parallel 2
       - run: ctest --test-dir build -C Release --output-on-failure
+      - name: Show the behavior test output when it fails
+        if: failure()
+        shell: pwsh
+        run: |
+          $env:QT_QPA_PLATFORM = 'offscreen'
+          & build/Release/strata-tests.exe -v2 2>&1 | Select-Object -Last 120
+          "strata-tests exit code: $LASTEXITCODE"
       - shell: pwsh
         run: |
           New-Item -ItemType Directory -Force dist

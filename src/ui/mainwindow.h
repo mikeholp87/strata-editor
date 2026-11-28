@@ -58,6 +58,7 @@ class MainWindow : public QMainWindow {
     QHash<QString, QJsonObject> pendingViews;
     QString pendingActive;
     bool shuttingDown = false;
+    QString lastRecovery = QStringLiteral("unwritten"); // fingerprint of the buffers last written to the recovery file
     bool recoveryBlocked = false;
     bool preserveRecovery = false;
     DocumentView *attach(Document *doc);

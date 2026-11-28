@@ -16,14 +16,26 @@
 void MainWindow::recoverySnapshot() {
     if (preserveRecovery || recoveryBlocked || !settings.value("recovery", true).toBool())
         return;
-    QJsonArray buffers;
+    // Cheap fingerprint first: copying and re-parsing large buffers every 15 s stalls the UI even when idle.
+    QString fingerprint;
+    QList<Document *> modified;
     for (int i = 0; i < tabs->count(); ++i) {
         auto d = qobject_cast<DocumentView *>(tabs->widget(i))->model;
-        if (d->isModified())
-            buffers.append(d->snapshot());
+        if (d->isModified()) {
+            modified.append(d);
+            fingerprint += QStringLiteral("%1:%2:%3:%4;")
+                               .arg(quintptr(d), 0, 16).arg(d->text()->revision()).arg(d->newline(), d->path());
+        }
     }
+    if (fingerprint == lastRecovery)
+        return;
+    QJsonArray buffers;
+    for (auto d : modified)
+        buffers.append(d->snapshot());
     QString error;
-    if (!Recovery::save(Persistence::dataPath("recovery.json"), {{"buffers", buffers}}, &error))
+    if (Recovery::save(Persistence::dataPath("recovery.json"), {{"buffers", buffers}}, &error))
+        lastRecovery = fingerprint;
+    else
         statusBar()->showMessage(tr("Recovery snapshot failed: %1. Save your documents.").arg(error), 10000);
 }
 void MainWindow::saveSession() {
@@ -92,6 +104,8 @@ void MainWindow::restoreSession() {
                 auto doc = new Document(Document::Mode(mode), this);
                 doc->restore(o);
                 attach(doc);
+                if (!doc->path().isEmpty() && QFileInfo::exists(doc->path()))
+                    watcher.addPath(doc->path());
                 recovered.insert(doc->path());
             }
         }

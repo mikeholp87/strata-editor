@@ -169,7 +169,7 @@ See [security notes](SECURITY.md) and the [user guide](docs/USER_GUIDE.md) befor
 ## Current limits
 
 - Files larger than **8 MiB** are refused; there is no streaming large-file viewer.
-- Autocomplete suggests words from the open file plus a short keyword list for the detected language; it is not semantic. Syntax highlighting is lexical. LSP, Tree-sitter, folding, multiple cursors, spellcheck and extensions are not implemented.
+- Autocomplete suggests words from the 128 KiB around the cursor plus a short keyword list for the detected language; it is not semantic. Syntax highlighting is lexical. LSP, Tree-sitter, folding, multiple cursors, spellcheck and extensions are not implemented.
 - Quick open sees entries currently loaded by the explorer, not a complete project index.
 - Project search is literal and case insensitive, skips files over **2 MiB** and NUL-containing files, excludes `.git`, `node_modules` and `build`, and stops at **1,000 matches**. Ignore-file parsing and multi-file replacement are not implemented.
 - Regex replacement inserts literal text; capture expansion and search-in-selection are not supported.

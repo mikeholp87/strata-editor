@@ -353,6 +353,21 @@ bool MainWindow::saveView(DocumentView *v, bool saveAs) {
             return false;
         }
     }
+    if (d->foreignHtml() && QFileInfo(path).canonicalFilePath() == d->path()) {
+        QMessageBox box(QMessageBox::Warning, tr("Rewrite HTML file?"),
+                        tr("%1 was not written by this editor. Saving rewrites it through the visual editor, "
+                           "which drops scripts, stylesheets, the doctype and other markup it cannot show.")
+                            .arg(d->title()),
+                        QMessageBox::Cancel, this);
+        auto copy = box.addButton(tr("Save a copy…"), QMessageBox::AcceptRole);
+        auto overwrite = box.addButton(tr("Overwrite original"), QMessageBox::DestructiveRole);
+        box.setDefaultButton(copy);
+        box.exec();
+        if (box.clickedButton() == copy)
+            return saveView(v, true);
+        if (box.clickedButton() != overwrite)
+            return false;
+    }
     QString error;
     if (!d->save(path, &error)) {
         QMessageBox::warning(this, tr("Save failed"), error);
@@ -380,6 +395,8 @@ bool MainWindow::closeTab(int i) {
     if (!v->model->path().isEmpty())
         closed.prepend(v->model->path());
     auto d = v->model;
+    if (!d->path().isEmpty())
+        watcher.removePath(d->path()); // each file is open in at most one tab
     tabs->removeTab(i);
     delete v;
     delete d;

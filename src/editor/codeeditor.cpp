@@ -119,25 +119,60 @@ void CodeEditor::toggleComment() {
     auto c = textCursor();
     int first = document()->findBlock(c.selectionStart()).blockNumber(),
         last = document()->findBlock(qMax(c.selectionStart(), c.selectionEnd() - 1)).blockNumber();
-    QString language = property("language").toString();
-    QString prefix =
-        (language == "Python" || language == "Bash" || language == "YAML" || language == "TOML") ? "#" : "//";
-    bool remove = true;
-    for (int n = first; n <= last; ++n)
-        if (!document()->findBlockByNumber(n).text().trimmed().startsWith(prefix))
+    const QString language = property("language").toString();
+    // Line marker, plus a closing marker for languages that only have block comments.
+    QString open = "// ", close;
+    if (language == "Python" || language == "Bash" || language == "YAML" || language == "TOML")
+        open = "# ";
+    else if (language == "SQL")
+        open = "-- ";
+    else if (language == "CSS")
+        open = "/* ", close = " */";
+    else if (language == "HTML" || language == "Markdown")
+        open = "<!-- ", close = " -->";
+    const QString head = open.trimmed(), tail = close.trimmed();
+    auto blank = [](const QTextBlock &b) { return b.text().trimmed().isEmpty(); };
+    bool remove = false;
+    for (int n = first; n <= last; ++n) {
+        const auto b = document()->findBlockByNumber(n);
+        if (blank(b))
+            continue;
+        const auto text = b.text().trimmed();
+        if (!text.startsWith(head) || !text.endsWith(tail)) {
             remove = false;
+            break;
+        }
+        remove = true;
+    }
     c.beginEditBlock();
     for (int n = last; n >= first; --n) {
         auto b = document()->findBlockByNumber(n);
+        if (blank(b))
+            continue; // never touch empty lines
+        const auto text = b.text();
+        const int indent = text.indexOf(QRegularExpression("\\S"));
+        const int end = indent + text.trimmed().size(); // before trailing blanks
         QTextCursor t(b);
-        int pos = b.text().indexOf(QRegularExpression("\\S"));
-        t.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, qMax(0, pos));
         if (remove) {
-            t.movePosition(QTextCursor::Right, QTextCursor::KeepAnchor,
-                           prefix.size() + (b.text().mid(pos + prefix.size(), 1) == " " ? 1 : 0));
+            if (!tail.isEmpty()) {
+                const int tailStart = end - int(tail.size());
+                const int from = tailStart > 0 && text[tailStart - 1] == ' ' ? tailStart - 1 : tailStart;
+                t.setPosition(b.position() + from);
+                t.setPosition(b.position() + end, QTextCursor::KeepAnchor);
+                t.removeSelectedText();
+            }
+            t.setPosition(b.position() + indent);
+            t.setPosition(b.position() + indent + head.size() + (text.mid(indent + head.size(), 1) == " " ? 1 : 0),
+                          QTextCursor::KeepAnchor);
             t.removeSelectedText();
-        } else
-            t.insertText(prefix + " ");
+        } else {
+            if (!close.isEmpty()) {
+                t.setPosition(b.position() + end);
+                t.insertText(close);
+            }
+            t.setPosition(b.position() + indent);
+            t.insertText(open);
+        }
     }
     c.endEditBlock();
 }
@@ -184,11 +219,15 @@ void CodeEditor::showCompletion(bool force) {
         return;
     }
     if (force || !popup->isVisible()) {
-        const int base = c.block().position();
-        // ponytail: skips word scanning above ~4M characters; needs an incremental index to lift
-        const auto text = document()->characterCount() > 4000000 ? QString() : toPlainText();
+        // Copy only the scanned window; copying the whole document on every new word stalls typing.
+        const int wordStart = c.block().position() + start, wordEnd = c.block().position() + end;
+        const int lo = qMax(0, wordStart - Completion::window);
+        const int hi = qMin(document()->characterCount() - 1, wordEnd + Completion::window);
+        QTextCursor range(document());
+        range.setPosition(lo);
+        range.setPosition(hi, QTextCursor::KeepAnchor);
         static_cast<QStringListModel *>(completer->model())
-            ->setStringList(Completion::candidates(text, base + start, base + end,
+            ->setStringList(Completion::candidates(range.selectedText(), wordStart - lo, wordEnd - lo,
                                                    property("language").toString()));
     }
     completer->setCompletionPrefix(prefix);
