@@ -56,12 +56,13 @@ class HardeningTests : public QObject {
         InstanceBridge bridge(requests);
         QSignalSpy spy(&bridge, &InstanceBridge::requested);
         QString error;
-        QVERIFY(InstanceBridge::send(requests, {"relative.txt", "/abs/other.md"}, &error));
+        const auto other = QDir::temp().absoluteFilePath("other.md"); // "/abs/..." is not absolute on Windows
+        QVERIFY(InstanceBridge::send(requests, {"relative.txt", other}, &error));
         QTRY_COMPARE(spy.count(), 1);
         const auto paths = spy.takeFirst().at(0).toStringList();
         QCOMPARE(paths.size(), 2);
         QCOMPARE(paths[0], QFileInfo("relative.txt").absoluteFilePath());
-        QCOMPARE(paths[1], QString("/abs/other.md"));
+        QCOMPARE(paths[1], other);
         QVERIFY(QDir(requests).entryList({"*.request"}, QDir::Files).isEmpty()); // consumed exactly once
         QVERIFY(InstanceBridge::send(requests, {}, &error)); // a bare launch just asks to be shown
         QTRY_COMPARE(spy.count(), 1);

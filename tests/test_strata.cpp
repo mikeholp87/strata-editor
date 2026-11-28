@@ -322,6 +322,8 @@ class StrataTests : public QObject {
         QCOMPARE(restored[1]->textCursor().position(), 9);
     }
     void realSessionRestore() {
+        qWarning().noquote() << "DBG start restore=" << QSettings("StrataEditor", "StrataEditor").value("restore", "unset").toString()
+                             << QSettings("StrataEditor", "StrataEditor").fileName();
         QTemporaryDir dir;
         // Windows keeps one persistent data directory for every test executable, so snapshots left by
         // other tests would pop the "Recover documents" prompt and replace the session being restored.
@@ -347,6 +349,7 @@ class StrataTests : public QObject {
             first.saveSession();
         }
         MainWindow second(true);
+        qWarning().noquote() << "DBG end restore=" << QSettings("StrataEditor", "StrataEditor").value("restore", "unset").toString();
         QTRY_VERIFY(second.current());
         QTRY_COMPARE(second.current()->model->path(), QFileInfo(p).canonicalFilePath());
         QCOMPARE(second.current()->findChildren<CodeEditor *>().size(), 2);
