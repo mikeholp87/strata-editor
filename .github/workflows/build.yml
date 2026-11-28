@@ -48,13 +48,17 @@ jobs:
           windeployqt --release --no-translations dist/strata-editor.exe
           Copy-Item LICENSE,THIRD_PARTY.md dist/
           $qtLicenses = Join-Path (Split-Path $env:QT_ROOT_DIR -Parent) 'Licenses'
-          if (-not (Test-Path $qtLicenses)) {
-            $qtBase = Split-Path (Split-Path $env:QT_ROOT_DIR -Parent) -Parent
-            Get-ChildItem $qtBase -Depth 2 -Directory | ForEach-Object { $_.FullName }
-            Get-ChildItem $qtBase -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match 'LICENSE|LGPL|COPYING' } | Select-Object -First 15 | ForEach-Object { $_.FullName }
-            throw "Qt license notices are missing: $qtLicenses"
+          New-Item -ItemType Directory -Force dist/Qt-Licenses | Out-Null
+          if (Test-Path $qtLicenses) {
+            Copy-Item -Recurse "$qtLicenses/*" dist/Qt-Licenses
+          } else {
+            # aqtinstall ships no Licenses folder; take the texts from the sources of the exact Qt version linked
+            foreach ($name in 'LGPL-3.0-only','GPL-3.0-only') {
+              Invoke-WebRequest "https://code.qt.io/cgit/qt/qtbase.git/plain/LICENSES/$name.txt?h=v6.8.3" -OutFile "dist/Qt-Licenses/$name.txt"
+              if ((Get-Item "dist/Qt-Licenses/$name.txt").Length -lt 1000) { throw "Qt license text $name was not downloaded" }
+            }
+            "Strata Editor links Qt 6.8.3 dynamically under the LGPL-3.0. Qt sources: https://download.qt.io/official_releases/qt/6.8/6.8.3/" | Set-Content dist/Qt-Licenses/NOTICE.txt
           }
-          Copy-Item -Recurse $qtLicenses dist/Qt-Licenses
           Compress-Archive dist/* strata-editor-windows-preview.zip
           Expand-Archive strata-editor-windows-preview.zip verified-dist
           $env:QT_QPA_PLATFORM = 'offscreen'
