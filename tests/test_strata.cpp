@@ -350,6 +350,8 @@ class StrataTests : public QObject {
             sessionFile.open(QIODevice::ReadOnly);
             qWarning().noquote() << "DBG session.json:" << sessionFile.readAll().left(600);
             qWarning().noquote() << "DBG files:" << QDir(QFileInfo(sessionFile).absolutePath()).entryList(QDir::Files);
+            QSettings dbg("StrataEditor", "StrataEditor");
+            qWarning().noquote() << "DBG settings: restore=" << dbg.value("restore", "unset").toString() << "recovery=" << dbg.value("recovery", "unset").toString() << "keys=" << dbg.allKeys().join(',').left(300) << "status text=" << second.statusBar()->currentMessage();
             auto tabsWidget = second.findChild<QTabWidget *>("documentTabs");
             qWarning().noquote() << "DBG tabs:" << (tabsWidget ? tabsWidget->count() : -1) << "current path:" << second.current()->model->path();
         }
