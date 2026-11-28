@@ -49,6 +49,9 @@ class HardeningTests : public QObject {
     }
     void cleanup() {
         qputenv("PATH", originalPath);
+        // On Windows QSettings is the registry, shared with every other test executable; never leave
+        // "restore=false" behind or the next executable's session restore silently does nothing.
+        QSettings("StrataEditor", "StrataEditor").remove("restore");
     }
     void secondLaunchHandsFilesToTheRunningInstance() {
         QTemporaryDir dir;

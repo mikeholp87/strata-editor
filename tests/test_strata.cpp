@@ -43,10 +43,6 @@ class StrataTests : public QObject {
         qputenv("XDG_DATA_HOME", testPaths.path().toUtf8());
 #endif
         QSettings::setPath(QSettings::NativeFormat, QSettings::UserScope, testPaths.path());
-        // Windows' native format is the registry, shared with every other test executable and run; use files
-        // under the private test directory so settings left by other tests cannot change what is restored.
-        QSettings::setDefaultFormat(QSettings::IniFormat);
-        QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, testPaths.path());
         QCoreApplication::setOrganizationName("StrataTests");
     }
     void encodingRoundTrips_data() {
@@ -322,8 +318,6 @@ class StrataTests : public QObject {
         QCOMPARE(restored[1]->textCursor().position(), 9);
     }
     void realSessionRestore() {
-        qWarning().noquote() << "DBG start restore=" << QSettings("StrataEditor", "StrataEditor").value("restore", "unset").toString()
-                             << QSettings("StrataEditor", "StrataEditor").fileName();
         QTemporaryDir dir;
         // Windows keeps one persistent data directory for every test executable, so snapshots left by
         // other tests would pop the "Recover documents" prompt and replace the session being restored.
@@ -349,7 +343,6 @@ class StrataTests : public QObject {
             first.saveSession();
         }
         MainWindow second(true);
-        qWarning().noquote() << "DBG end restore=" << QSettings("StrataEditor", "StrataEditor").value("restore", "unset").toString();
         QTRY_VERIFY(second.current());
         QTRY_COMPARE(second.current()->model->path(), QFileInfo(p).canonicalFilePath());
         QCOMPARE(second.current()->findChildren<CodeEditor *>().size(), 2);
