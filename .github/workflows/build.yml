@@ -29,18 +29,6 @@ jobs:
       - run: cmake -S . -B build -A x64
       - run: cmake --build build --config Release --parallel 2
       - run: ctest --test-dir build -C Release --output-on-failure
-      - name: Show the behavior test output when it fails
-        if: failure()
-        shell: pwsh
-        run: |
-          $env:QT_QPA_PLATFORM = 'offscreen'
-          foreach ($name in 'strata-hardening-tests','strata-tests') {
-            $exe = (Resolve-Path "build/Release/$name.exe").Path
-            $p = Start-Process -FilePath $exe -ArgumentList '-v2','-o',"$name.txt,txt" -NoNewWindow -PassThru
-            if (-not $p.WaitForExit(120000)) { $p.Kill(); "TIMED OUT after 120 s" }
-            "== $name exit code: $($p.ExitCode)"
-            Select-String -Path "$name.txt" -Pattern 'FAIL!|DBG' -Context 0,4 | ForEach-Object { $_.ToString() }
-          }
       - shell: pwsh
         run: |
           New-Item -ItemType Directory -Force dist
