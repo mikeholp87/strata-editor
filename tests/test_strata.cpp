@@ -43,6 +43,10 @@ class StrataTests : public QObject {
         qputenv("XDG_DATA_HOME", testPaths.path().toUtf8());
 #endif
         QSettings::setPath(QSettings::NativeFormat, QSettings::UserScope, testPaths.path());
+        // Windows' native format is the registry, shared with every other test executable and run; use files
+        // under the private test directory so settings left by other tests cannot change what is restored.
+        QSettings::setDefaultFormat(QSettings::IniFormat);
+        QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, testPaths.path());
         QCoreApplication::setOrganizationName("StrataTests");
     }
     void encodingRoundTrips_data() {
@@ -344,17 +348,6 @@ class StrataTests : public QObject {
         }
         MainWindow second(true);
         QTRY_VERIFY(second.current());
-        QTest::qWait(1500);
-        {
-            QFile sessionFile(Persistence::dataPath("session.json"));
-            sessionFile.open(QIODevice::ReadOnly);
-            qWarning().noquote() << "DBG session.json:" << sessionFile.readAll().left(600);
-            qWarning().noquote() << "DBG files:" << QDir(QFileInfo(sessionFile).absolutePath()).entryList(QDir::Files);
-            QSettings dbg("StrataEditor", "StrataEditor");
-            qWarning().noquote() << "DBG settings: restore=" << dbg.value("restore", "unset").toString() << "recovery=" << dbg.value("recovery", "unset").toString() << "keys=" << dbg.allKeys().join(',').left(300) << "status text=" << second.statusBar()->currentMessage();
-            auto tabsWidget = second.findChild<QTabWidget *>("documentTabs");
-            qWarning().noquote() << "DBG tabs:" << (tabsWidget ? tabsWidget->count() : -1) << "current path:" << second.current()->model->path();
-        }
         QTRY_COMPARE(second.current()->model->path(), QFileInfo(p).canonicalFilePath());
         QCOMPARE(second.current()->findChildren<CodeEditor *>().size(), 2);
         QCOMPARE(second.current()->code->textCursor().position(), 7);
